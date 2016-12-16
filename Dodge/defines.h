@@ -1,0 +1,43 @@
+#define WINDOW_TITLE_PREFIX "hfcouhkj"
+#define SHADERCODE(x) SHADERCODEPRE(x)
+#define SHADERCODEPRE(x) "#version 400\n" #x
+
+#define FLOOR_SIZE 6
+#define FLOOR_HEIGHT 0.0f
+#define HEIGHT_DIVISIONS 1
+#define NO_OF_TEXTURES 4
+#define NEW_BLOCK_FREQUENCY 15
+#define UNIT_DISTANCE 0.5f
+#define UNIT_TIME 0.025f
+
+#define RIGHT_KEY 0
+#define LEFT_KEY 1
+#define UP_KEY 2
+#define DOWN_KEY 3
+#define SPACE_KEY 4
+#define GLUT_KEY_SPACEBAR 32
+
+#define LETHAL_VELOCITY_MULTIPLIER 0.75f
+#define JUMP_VELOCITY 4.0f
+#define MAX_FLOATING_BLOCKS 10
+#define MAX_VELOCITY 30.0f
+#define MAX_OVERLAP 0.001f
+#define MAX_BLOCK_SIZE 3
+#define MAX_BLOCK_HEIGHT 5
+#define MAX_FLOOR 25
+#define MIN_SHADOW 0.8f
+#define MAX_SHADOW 0.1f
+
+#define PLAYER_HEIGHT 0.5f
+#define PLAYER_WIDTH 0.1f
+#define FEET_HEAD_WIDTH_SCALE 0.8f
+#define BODY_WIDTH_SCALE 1.0f
+#define FEET_HEAD_HEIGHT_SCALE 0.1f
+#define BODY_HEIGHT_SCALE 0.8f
+
+#define QUAT_X 0
+#define QUAT_Y 1
+#define QUAT_Z 2
+#define QUAT_A 3
+
+#define SCENE_CUBE_SIZE 50.0f

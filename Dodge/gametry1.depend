@@ -1,0 +1,281 @@
+# depslib dependency file v1.0
+1462941957 source:d:\profiles\vbindal\documents\gametry1\cuboidclass.cpp
+	<GL/glew.h>
+	<iostream>
+	<stdio.h>
+
+1462943881 source:d:\profiles\vbindal\documents\gametry1\general_funcs.cpp
+	<math.h>
+	<GL/glew.h>
+	<GL/freeglut.h>
+	"stb_image.h"
+
+1462085840 d:\profiles\vbindal\documents\gametry1\stb_image.h
+	"stb_image.h"
+	<stdio.h>
+	<stdarg.h>
+	<stddef.h>
+	<stdlib.h>
+	<string.h>
+	<math.h>
+	<stdio.h>
+	<assert.h>
+	<stdint.h>
+	<emmintrin.h>
+	<intrin.h>
+	<arm_neon.h>
+
+1464524054 source:d:\profiles\vbindal\documents\gametry1\mat_funcs.c
+	"defines.h"
+	<math.h>
+	"mat_funcs.h"
+
+1464435864 d:\profiles\vbindal\documents\gametry1\mat_funcs.h
+
+1465993646 source:d:\profiles\vbindal\documents\gametry1\physics.cpp
+	"classes.cpp"
+	<math.h>
+	"physics.h"
+
+1467031532 source:d:\profiles\vbindal\documents\gametry1\gm.cpp
+	"defines.h"
+	<iostream>
+	<fstream>
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	<ctime>
+	<cstdlib>
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<math.h>
+	"stb_image.h"
+	"mat_funcs.h"
+	"classes.cpp"
+	"physics.h"
+
+1462941957 d:\profiles\vbindal\documents\gametry1\cuboidclass.cpp
+	<GL/glew.h>
+	<iostream>
+	<stdio.h>
+
+1462943993 d:\profiles\vbindal\documents\gametry1\general_funcs.cpp
+	<math.h>
+	<GL/glew.h>
+	<GL/freeglut.h>
+	"stb_image.h"
+
+1467030877 d:\profiles\vbindal\documents\gametry1\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1467030877 source:d:\profiles\vbindal\documents\gametry1\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1463054755 d:\profiles\vbindal\documents\gametry1\physics.cpp
+	"classes.cpp"
+	<math.h>
+
+1464845894 d:\profiles\vbindal\documents\gametry1\physics.h
+
+1467034095 d:\profiles\vbindal\documents\gametry1\defines.h
+
+1469964669 source:c:\users\nana ji\documents\gametry1\gm.cpp
+	"defines.h"
+	<iostream>
+	<fstream>
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	<ctime>
+	<cstdlib>
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<math.h>
+	"stb_image.h"
+	"mat_funcs.h"
+	"classes.cpp"
+
+1469965048 c:\users\nana ji\documents\gametry1\defines.h
+
+1462085840 c:\users\nana ji\documents\gametry1\stb_image.h
+	"stb_image.h"
+	<stdio.h>
+	<stdarg.h>
+	<stddef.h>
+	<stdlib.h>
+	<string.h>
+	<math.h>
+	<stdio.h>
+	<assert.h>
+	<stdint.h>
+	<emmintrin.h>
+	<intrin.h>
+	<arm_neon.h>
+
+1464435864 c:\users\nana ji\documents\gametry1\mat_funcs.h
+
+1468759317 c:\users\nana ji\documents\gametry1\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1464845894 c:\users\nana ji\documents\gametry1\physics.h
+
+1468748191 source:c:\users\nana ji\documents\gametry1\physics.cpp
+
+1468759317 source:c:\users\nana ji\documents\gametry1\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1468736595 source:c:\users\nana ji\documents\gametry1\mat_funcs.c
+	"defines.h"
+	<math.h>
+	"mat_funcs.h"
+
+1466703836 source:c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1466704300 c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\defines.h
+
+1464435864 c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\mat_funcs.h
+
+1466712225 source:c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\gm.cpp
+	"defines.h"
+	<iostream>
+	<fstream>
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	<ctime>
+	<cstdlib>
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<math.h>
+	"stb_image.h"
+	"mat_funcs.h"
+	"classes.cpp"
+	"physics.h"
+
+1462085840 c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\stb_image.h
+	"stb_image.h"
+	<stdio.h>
+	<stdarg.h>
+	<stddef.h>
+	<stdlib.h>
+	<string.h>
+	<math.h>
+	<stdio.h>
+	<assert.h>
+	<stdint.h>
+	<emmintrin.h>
+	<intrin.h>
+	<arm_neon.h>
+
+1466703836 c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1464845894 c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\physics.h
+
+1464524054 source:c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\mat_funcs.c
+	"defines.h"
+	<math.h>
+	"mat_funcs.h"
+
+1465993646 source:c:\users\nana ji\documents\opengl stuff 23.6.2016\gametry1\physics.cpp
+	"classes.cpp"
+	<math.h>
+	"physics.h"
+
+1468759317 source:e:\vivekprojects\gametry1\dodge\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1469965048 e:\vivekprojects\gametry1\dodge\defines.h
+
+1464435864 e:\vivekprojects\gametry1\dodge\mat_funcs.h
+
+1470512850 source:e:\vivekprojects\gametry1\dodge\gm.cpp
+	"defines.h"
+	<iostream>
+	<fstream>
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	<ctime>
+	<cstdlib>
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<math.h>
+	"stb_image.h"
+	"mat_funcs.h"
+	"classes.cpp"
+
+1462085840 e:\vivekprojects\gametry1\dodge\stb_image.h
+	"stb_image.h"
+	<stdio.h>
+	<stdarg.h>
+	<stddef.h>
+	<stdlib.h>
+	<string.h>
+	<math.h>
+	<stdio.h>
+	<assert.h>
+	<stdint.h>
+	<emmintrin.h>
+	<intrin.h>
+	<arm_neon.h>
+
+1468759317 e:\vivekprojects\gametry1\dodge\classes.cpp
+	"defines.h"
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<iostream>
+	<stdio.h>
+	<math.h>
+	"mat_funcs.h"
+
+1468736595 source:e:\vivekprojects\gametry1\dodge\mat_funcs.c
+	"defines.h"
+	<math.h>
+	"mat_funcs.h"
+
+1468748191 source:e:\vivekprojects\gametry1\dodge\physics.cpp
+
