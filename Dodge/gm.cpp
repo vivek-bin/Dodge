@@ -12,6 +12,8 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <math.h>
+#include <list>
+#include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -32,8 +34,8 @@ GLuint Textures[NO_OF_TEXTURES+4];
 
 base_Shape Box;
 shader_Prog TexShader, SimpleTexShader;
-object_Stack BlockStack;
-small_Queue FloatingBlocksQ(MAX_FLOATING_BLOCKS);
+std::vector<shape_Object> BlockStack;
+std::list<int> FloatingBlocks;
 
 shape_Object SceneryCube,Clouds;
 
@@ -42,7 +44,7 @@ player_Class Player1;
 char Heights[FLOOR_SIZE][FLOOR_SIZE];
 
 char FloorNo;
-float Gravity[4]={0.0f,-8.0f,0.0f,0.0f};
+float const Gravity[4]={0.0f,-8.0f,0.0f,0.0f};
 
 const GLchar* TexVertShader = { SHADERCODE(
  layout(location=0) in vec4 in_Position;
@@ -259,7 +261,7 @@ void keyCheck(){
         Player1.switchToPlayerBody();
         Player1.getForwardVelocityVector(TempVec,MoveSpeed);
         Player1.posUpdate(TempVec,UNIT_TIME);
-        for(Temp=BlockStack.getTop();Temp!=NULL;Temp=BlockStack.getNext(Temp)){
+        for(Temp=BlockStack.begin();Temp!=NULL;Temp=BlockStack.getNext(Temp)){
             if(Player1.simpleCuboidCollision((BlockStack.getData(Temp))->ModelMat)){
                 Player1.reduceOverlap(TempVec,BlockStack.getData(Temp),false);
                 break;
@@ -400,7 +402,14 @@ void timerFunction(int n){
         glutSetWindowTitle(temp);
     }
     if(rand()%NEW_BLOCK_FREQUENCY==0)
-    {  nextBlock(); }
+    {
+        if(FloatingBlocks.size()<MAX_FLOATING_BLOCKS && FloorNo<=MAX_FLOOR){
+            shape_Object Next;
+            nextBlock(&Next);
+            BlockStack.push_back(Next);
+            FloatingBlocks.push_back(BlockStack.size()-1);
+        }
+    }
     keyCheck();
     moveBlocks();
     movePlayer();
@@ -577,16 +586,12 @@ void createBox(){
     glBindVertexArray(0);
 }
 
-void nextBlock(){
+void nextBlock(shape_Object &Next){
     int BlockPos,RNo;
     short BlocksLeft;
     short x,y,i,j;
     short xn,xp,yn,yp,Height,MaxHeight;
     char flag;
-    shape_Object* Next;
-
-    if(FloatingBlocksQ.numElements()>=MAX_FLOATING_BLOCKS || FloorNo>MAX_FLOOR)
-        return;
 
     do{
         for(BlocksLeft=i=0;i<FLOOR_SIZE;++i)
@@ -687,8 +692,6 @@ void nextBlock(){
                                 UNIT_DISTANCE*(MAX_FLOOR+FloorNo)*2,
                                 UNIT_DISTANCE*(y-(FLOOR_SIZE-1)*0.5f+(yp-yn)*0.5f));
     Next->Texture=Textures[(rand()%NO_OF_TEXTURES)];
-    BlockStack.Add(Next);
-    FloatingBlocksQ.addElement(Next);
 }
 
 void initGame(){
@@ -804,13 +807,12 @@ void movePlayer(){
 }
 
 void moveBlocks(){
-    short i;
     float TimeRev;
     void *Temp;
     shape_Object *Block;
     shape_Object *TempBlock;
 
-    for(i=FloatingBlocksQ.getFront();i!=-1;i=FloatingBlocksQ.getNext(i)){
+    for(short i=FloatingBlocksQ.getFront();i!=-1;i=FloatingBlocksQ.getNext(i)){
         Block=FloatingBlocksQ.getData(i);
         Block->velUpdate(Gravity,UNIT_TIME);
         Block->posUpdate(UNIT_TIME);
