@@ -292,6 +292,7 @@ public:
 class shape_Object{
 protected:
     float ObjVelocity[4];
+    bool Floating;
 public:
     base_Shape *Shape;
     GLuint Texture;
@@ -302,6 +303,35 @@ public:
         initMat(ModelMat);
         Shape=NULL;
         Texture=0;
+        Floating=true;
+    }
+
+    shape_Object(const shape_Object& Obj){
+        for(int i=0;i<4;i++)
+            ObjVelocity[i]=Obj.ObjVelocity[i];
+
+        for(int i=0;i<16;i++)
+            ModelMat[i]=Obj.ModelMat[i];
+
+        Shape=Obj.Shape;
+        Texture=Obj.Texture;
+        Floating=Obj.Floating;
+    }
+
+    void setTexture(GLuint Tex){
+        Texture=Tex;
+    }
+
+    void setShape(base_Shape* Shp){
+        Shape=Shp;
+    }
+
+    bool isFloating() const{
+        return Floating;
+    }
+
+    void notFloating(){
+        Floating=false;
     }
 
     void resetVelocity(){
@@ -316,7 +346,7 @@ public:
         ObjVelocity[2]=Vz;
     }
 
-    void velUpdate(float Acc[4],float Time){
+    void velUpdate(float const Acc[4],float Time){
         if(ObjVelocity[0]>MAX_VELOCITY||
            ObjVelocity[1]>MAX_VELOCITY||
            ObjVelocity[2]>MAX_VELOCITY)
@@ -334,7 +364,7 @@ public:
         translateMat(ModelMat,Velocity[0]*Time,Velocity[1]*Time,Velocity[2]*Time);
     }
 
-    float velocityMaxComponent(){
+    float velocityMaxComponent() const{
         if(ObjVelocity[0]*ObjVelocity[0]>ObjVelocity[1]*ObjVelocity[1])
             if(ObjVelocity[0]*ObjVelocity[0]>ObjVelocity[2]*ObjVelocity[2])
                 return (ObjVelocity[0]>0?ObjVelocity[0]:-ObjVelocity[0]);
@@ -347,22 +377,22 @@ public:
                 return (ObjVelocity[2]>0?ObjVelocity[2]:-ObjVelocity[2]);
     }
 
-    bool onFloor(){
+    bool onFloor() const{
         if(ModelMat[13]-ModelMat[5]<=FLOOR_HEIGHT+MAX_OVERLAP)
             return true;
         return false;
     }
 
-    bool simpleCuboidCollision(float const * const BlockModelMat){
+    bool simpleCuboidCollision (const shape_Object& Piece) const{
         float Pos,Size;
-        Pos=ModelMat[14]-BlockModelMat[14];if(Pos<0.0f)Pos*=-1.0f;
-        Size=ModelMat[10]+BlockModelMat[10];
+        Pos=ModelMat[14]-Piece.ModelMat[14];if(Pos<0.0f)Pos*=-1.0f;
+        Size=ModelMat[10]+Piece.ModelMat[10];
         if(Pos<Size){
-            Pos=ModelMat[13]-BlockModelMat[13];if(Pos<0.0f)Pos*=-1.0f;
-            Size=ModelMat[5]+BlockModelMat[5];
+            Pos=ModelMat[13]-Piece.ModelMat[13];if(Pos<0.0f)Pos*=-1.0f;
+            Size=ModelMat[5]+Piece.ModelMat[5];
             if(Pos<Size){
-                Pos=ModelMat[12]-BlockModelMat[12];if(Pos<0.0f)Pos*=-1.0f;
-                Size=ModelMat[0]+BlockModelMat[0];
+                Pos=ModelMat[12]-Piece.ModelMat[12];if(Pos<0.0f)Pos*=-1.0f;
+                Size=ModelMat[0]+Piece.ModelMat[0];
                 if(Pos<Size){
                     return true;
                 }
@@ -371,13 +401,13 @@ public:
         return false;
     }
 
-    float reduceOverlap(shape_Object const * const Piece,bool Overlap){
+    float reduceOverlap(const shape_Object& Piece,bool Overlap){
         float TimeSlice,TimeRev;
         TimeRev=TimeSlice=UNIT_TIME/2;
         posUpdate(-TimeSlice);
         while(velocityMaxComponent()*TimeSlice>MAX_OVERLAP){
             TimeSlice/=2;
-            if(simpleCuboidCollision(Piece->ModelMat)){
+            if(simpleCuboidCollision(Piece)){
                 posUpdate(-TimeSlice);
                 TimeRev+=TimeSlice;
             }
@@ -386,7 +416,7 @@ public:
                 TimeRev-=TimeSlice;
             }
         }
-        if(simpleCuboidCollision(Piece->ModelMat)){
+        if(simpleCuboidCollision(Piece)){
             if(!Overlap){
                 posUpdate(-TimeSlice);
                 TimeRev+=TimeSlice;
@@ -402,13 +432,13 @@ public:
         return TimeRev;
     }
 
-    float reduceOverlap(float const * const Velocity,shape_Object const * const Piece,bool Overlap){
+    float reduceOverlap(float const * const Velocity,const shape_Object& Piece,bool Overlap){
         float TimeSlice,TimeRev;
         TimeRev=TimeSlice=UNIT_TIME/2;
         posUpdate(Velocity,-TimeSlice);
         while(velocityMaxComponent()*TimeSlice>MAX_OVERLAP){
             TimeSlice/=2;
-            if(simpleCuboidCollision(Piece->ModelMat)){
+            if(simpleCuboidCollision(Piece)){
                 posUpdate(Velocity,-TimeSlice);
                 TimeRev+=TimeSlice;
             }
@@ -417,7 +447,7 @@ public:
                 TimeRev-=TimeSlice;
             }
         }
-        if(simpleCuboidCollision(Piece->ModelMat)){
+        if(simpleCuboidCollision(Piece)){
             if(!Overlap){
                 posUpdate(Velocity,-TimeSlice);
                 TimeRev+=TimeSlice;
@@ -432,9 +462,6 @@ public:
 
         return TimeRev;
     }
-
-
-
 
 };
 
@@ -477,7 +504,7 @@ public:
 
     void reduceLives(const char FlrN){
         --Lives;std::cout<<Lives;
-        Camera[1]=(MAX_FLOOR+FlrN+5)*UNIT_DISTANCE;
+        Camera[1]=(FlrN+6)*UNIT_DISTANCE;
         setMatPosition();
     }
 
@@ -538,19 +565,10 @@ public:
         else if(PlayerPart==Head)
             ModelMat[13]-=Height*0.95f;
 
-
         ModelMat[0]=Width*BODY_WIDTH_SCALE;
         ModelMat[5]=Height*(BODY_HEIGHT_SCALE+FEET_HEAD_HEIGHT_SCALE+FEET_HEAD_HEIGHT_SCALE);
         ModelMat[10]=Width*BODY_WIDTH_SCALE;
-        PlayerPart=Body;
-    }
-
-    void setTexture(GLuint Tex){
-        Texture=Tex;
-    }
-
-    void setShape(base_Shape* Shp){
-        Shape=Shp;
+        PlayerPart=Whole;
     }
 
     void getViewMat(float ViewMat[]){
@@ -580,7 +598,7 @@ public:
             ViewMat[15]=1;
     }
 
-    void mouseCam(float X,float Y){
+    void mouseMove(float X,float Y){
         MouseXAngle=-(X-0.5f)*M_PI*0.4;
         MouseYAngle=-(Y-0.5f)*M_PI*0.4;
     }
@@ -593,12 +611,11 @@ public:
         multiplyMatMV(TempMat,Up,4);
     }
 
-    void getForwardVelocityVector(float Velocity[],float MoveSpeed){
-        Velocity[0]=Forward[0];Velocity[1]=Forward[1];Velocity[2]=Forward[2];
-        normalizeVector(Velocity);
-        Velocity[0]*=MoveSpeed;
-        Velocity[1]*=MoveSpeed;
-        Velocity[2]*=MoveSpeed;
+    void getForwardVelocity(float TempVec[],float MoveSpeed){
+        TempVec[0]=Forward[0]*MoveSpeed;
+        TempVec[1]=Forward[1]*MoveSpeed;
+        TempVec[2]=Forward[2]*MoveSpeed;
+        TempVec[3]=Forward[3]*MoveSpeed;
     }
 
     void jumpPlayer(){
@@ -622,6 +639,88 @@ public:
         setMatPosition();
     }
 
+};
+
+class control_Interface{
+    static bool ArrowKeys[5];
+    static int MouseX;
+    static int MouseY;
+
+    static void arrowKeyUp(int key,int x,int y){
+        if(key == GLUT_KEY_RIGHT)
+            {ArrowKeys[RIGHT_KEY]=false;}
+        else if(key == GLUT_KEY_LEFT)
+            {ArrowKeys[LEFT_KEY]=false;}
+        else if(key == GLUT_KEY_UP)
+            {ArrowKeys[UP_KEY]=false;}
+        else if(key == GLUT_KEY_DOWN)
+            {ArrowKeys[DOWN_KEY]=false;}
+    }
+
+    static void arrowKeyDown(int key,int x,int y){
+        if(key == GLUT_KEY_RIGHT)
+            {ArrowKeys[RIGHT_KEY]=true;}
+        else if(key == GLUT_KEY_LEFT)
+            {ArrowKeys[LEFT_KEY]=true;}
+        else if(key == GLUT_KEY_UP)
+            {ArrowKeys[UP_KEY]=true;}
+        else if(key == GLUT_KEY_DOWN)
+            {ArrowKeys[DOWN_KEY]=true;}
+    }
+
+    static void otherKeysUp(unsigned char key,int x,int y){
+        if(key == GLUT_KEY_SPACEBAR)
+            ArrowKeys[SPACE_KEY]=false;
+    }
+
+    static void otherKeysDown(unsigned char key,int x,int y){
+        if(key == GLUT_KEY_SPACEBAR)
+            ArrowKeys[SPACE_KEY]=true;
+    }
+
+    static void setMouse(int x,int y){
+        MouseX=x;MouseY=y;
+    }
+
+public:
+
+    static bool jump(){
+        return ArrowKeys[SPACE_KEY];
+    }
+
+    static int horizontalCtrl(){
+        if(!(ArrowKeys[RIGHT_KEY]^ArrowKeys[LEFT_KEY]))
+            return 0;
+        if(ArrowKeys[RIGHT_KEY])
+            return -1;
+        else
+            return 1;
+    }
+
+    static int verticalCtrl(){
+        if(!(ArrowKeys[UP_KEY]^ArrowKeys[DOWN_KEY]))
+            return 0;
+        if(ArrowKeys[DOWN_KEY])
+            return -1;
+        else
+            return 1;
+    }
+
+    static int getMouseX(){
+        return MouseX;
+    }
+
+    static int getMouseY(){
+        return MouseY;
+    }
+
+    static void inputSetup(){
+        glutKeyboardFunc(otherKeysDown);
+        glutKeyboardUpFunc(otherKeysUp);
+        glutSpecialFunc(arrowKeyDown);
+        glutSpecialUpFunc(arrowKeyUp);
+        glutPassiveMotionFunc(setMouse);
+    }
 };
 
 #endif // MY_CLASSES

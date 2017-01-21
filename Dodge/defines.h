@@ -8,7 +8,7 @@
 #define NO_OF_TEXTURES 4
 #define NEW_BLOCK_FREQUENCY 15
 #define UNIT_DISTANCE 0.5f
-#define UNIT_TIME 0.025f
+#define UNIT_TIME 0.01f
 
 #define RIGHT_KEY 0
 #define LEFT_KEY 1
@@ -34,6 +34,9 @@
 #define BODY_WIDTH_SCALE 1.0f
 #define FEET_HEAD_HEIGHT_SCALE 0.1f
 #define BODY_HEIGHT_SCALE 0.8f
+
+#define KEY_ROTATESPEED 100.0f
+#define KEY_MOVESPEED 2.5f
 
 #define QUAT_X 0
 #define QUAT_Y 1

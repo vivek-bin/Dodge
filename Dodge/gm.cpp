@@ -1,4 +1,3 @@
-
 #include "defines.h"
 
 #include <iostream>
@@ -21,30 +20,34 @@
 #include "classes.cpp"
 
 GLuint shader_Prog::CurrentProg;
+bool control_Interface::ArrowKeys[];
+int  control_Interface::MouseX;
+int  control_Interface::MouseY;
 
-int CurrentWidth = 800*3/2, CurrentHeight = 600*3/2, WindowHandle = 0;
-unsigned int FrameCount = 0;
+float const Gravity[4]={0.0f, -10.0f, 0.0f, 0.0f};
 
-GLubyte ArrowKeys[5];
+int CurrentWidth = 800*3/2, CurrentHeight = 600*3/2, WindowHandle = 0, FrameCount = 0;
 
-GLfloat ProjMat[16],ViewMat[16];
-
-GLuint ProjMatUbo,ViewMatUbo;
-GLuint Textures[NO_OF_TEXTURES+4];
+GLuint Textures[NO_OF_TEXTURES];
 
 base_Shape Box;
+
 shader_Prog TexShader, SimpleTexShader;
-std::vector<shape_Object> BlockStack;
-std::list<int> FloatingBlocks;
-
-shape_Object SceneryCube,Clouds;
-
-player_Class Player1;
 
 char Heights[FLOOR_SIZE][FLOOR_SIZE];
 
-char FloorNo;
-float const Gravity[4]={0.0f,-8.0f,0.0f,0.0f};
+int FloorNo, NumFloatingBlocks;
+
+player_Class Player1;
+
+shape_Object SceneryCube;
+
+std::vector<shape_Object> BlockStack;
+
+typedef std::vector<shape_Object>::iterator block_Iterator;
+typedef std::vector<shape_Object>::const_iterator const_Block_Iterator;
+typedef std::vector<shape_Object>::reverse_iterator reverse_Block_Iterator;
+typedef std::vector<shape_Object>::const_reverse_iterator const_Reverse_Block_Iterator;
 
 const GLchar* TexVertShader = { SHADERCODE(
  layout(location=0) in vec4 in_Position;
@@ -119,7 +122,6 @@ const GLchar* TexFragShader = { SHADERCODE(
         && shadow_coords[2+i*5]+HL>fg_Position.x
         && shadow_coords[4+i*5]-HW<fg_Position.z
         && shadow_coords[4+i*5]+HW>fg_Position.z
-        && shadow_coords[0+i*5] < 1e19
         && HeightDistance > 0
         && HeightDistance < MinHD)
             MinHD=HeightDistance;
@@ -154,31 +156,24 @@ const GLchar* SimpleTexFragShader = { SHADERCODE(
      frag_colour = texture(basic_texture,fg_TexCoords);
      if(frag_colour == transparent_colour)
         discard;
-
  }
 )};
 
-
 void initialize(int ,char* []);
 void initWindow(int ,char* []);
-void initializeData();
 void timerFunction(int );
 void idleFunction();
 void renderFunction();
 void resizeFunction(int ,int );
 void cleanUp();
-void arrowKeyDown(int ,int ,int );
-void arrowKeyUp(int ,int ,int );
-void otherKeysDown(unsigned char ,int ,int );
-void otherKeysUp(unsigned char ,int ,int );
 void createProjMat(float[],float,float,float,float);
 GLuint loadTexture(const char *,const GLuint,const GLuint,const GLuint);
 void createBox();
 void nextBlock();
-void moveBlocks();
+void moveBlock(block_Iterator&);
 void movePlayer();
 void initGame();
-void setMouseCam(int,int);
+void checkInput();
 
 int main(int argc,char* argv[]){
     srand(time(0));
@@ -202,7 +197,6 @@ void initialize(int argc,char* argv[]){
     fprintf(stdout,"OpenGL Version : %s",glGetString(GL_VERSION));
     glEnable(GL_TEXTURE_2D);
     initGame();
-    createProjMat(ProjMat,MAX_OVERLAP,100.0f,67.0f,(float)CurrentWidth/CurrentHeight);
     glClearColor(0.68f,0.68f,1.0f,1.0f);
 }
 
@@ -214,172 +208,104 @@ void initWindow(int argc,char* argv[]){
     glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE,GLUT_ACTION_GLUTMAINLOOP_RETURNS);
     glutInitWindowSize(CurrentWidth,CurrentHeight);
     glutInitDisplayMode(GLUT_DEPTH|GLUT_RGBA|GLUT_DOUBLE);
-
     WindowHandle = glutCreateWindow(WINDOW_TITLE_PREFIX);
-
-    if(WindowHandle < 1)
-    {
+    if(WindowHandle < 1){
         fprintf(stderr, "UNABLE TO CREATE WINDOW");
         exit(-1);
     }
-
     glEnable(GL_DEPTH_TEST);
 
-    glutKeyboardFunc(otherKeysDown);
-    glutKeyboardUpFunc(otherKeysUp);
-    glutSpecialFunc(arrowKeyDown);
-    glutSpecialUpFunc(arrowKeyUp);
+    control_Interface::inputSetup();
+
     glutIdleFunc(idleFunction);
     glutDisplayFunc(renderFunction);
     glutReshapeFunc(resizeFunction);
     glutCloseFunc(cleanUp);
     glutTimerFunc(0,timerFunction,0);
-    glutPassiveMotionFunc(setMouseCam);
 }
 
-void setMouseCam(int x,int y){
-    Player1.mouseCam((float)x/CurrentWidth,(float)y/CurrentHeight);
-}
-
-void keyCheck(){
-    float RotateSpeed, MoveSpeed;
+void checkInput(){
     float TempVec[4];
-    RotateSpeed=60.0f;
-    MoveSpeed=2.0f;
-    void *Temp;
-    if((ArrowKeys[RIGHT_KEY]^ArrowKeys[LEFT_KEY])==1){
-        if(ArrowKeys[RIGHT_KEY]==1)
-        {RotateSpeed*=-1;}
 
-        Player1.switchToPlayerBody();
-        Player1.rotateAboutCamera(RotateSpeed,UNIT_TIME);
-    }
-    if((ArrowKeys[UP_KEY]^ArrowKeys[DOWN_KEY])==1){
-        if(ArrowKeys[DOWN_KEY]==1)
-        {MoveSpeed*=-1;}
-
-        Player1.switchToPlayerBody();
-        Player1.getForwardVelocityVector(TempVec,MoveSpeed);
+    Player1.switchToPlayerBody();
+    Player1.rotateAboutCamera(KEY_ROTATESPEED*control_Interface::horizontalCtrl(),UNIT_TIME);
+    if(control_Interface::verticalCtrl()!=0){
+        Player1.getForwardVelocity(TempVec,KEY_MOVESPEED*control_Interface::verticalCtrl());
         Player1.posUpdate(TempVec,UNIT_TIME);
-        for(Temp=BlockStack.begin();Temp!=NULL;Temp=BlockStack.getNext(Temp)){
-            if(Player1.simpleCuboidCollision((BlockStack.getData(Temp))->ModelMat)){
-                Player1.reduceOverlap(TempVec,BlockStack.getData(Temp),false);
+        for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
+            if(Player1.simpleCuboidCollision(*Block)){
+                Player1.reduceOverlap(TempVec,*Block,false);
                 break;
             }
         }
     }
-    if(ArrowKeys[SPACE_KEY]==1){
-        if(Player1.onFloor()){
-            Player1.jumpPlayer();
-        }
-        else{
-            Player1.switchToPlayerFeet();
-            for(Temp=BlockStack.getTop();Temp!=NULL;Temp=BlockStack.getNext(Temp)){
-                if(Player1.simpleCuboidCollision((BlockStack.getData(Temp))->ModelMat)){
-                    Player1.jumpPlayer();
-                    break;
-                }
+    if(control_Interface::jump()){
+        Player1.switchToPlayerFeet();
+        for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
+            if(Player1.simpleCuboidCollision(*Block)){
+                Player1.jumpPlayer();
+                break;
             }
         }
     }
-}
-
-void arrowKeyUp(int key,int x,int y){
-    if(key == GLUT_KEY_RIGHT)
-        {ArrowKeys[RIGHT_KEY]=0;}
-    else if(key == GLUT_KEY_LEFT)
-        {ArrowKeys[LEFT_KEY]=0;}
-    else if(key == GLUT_KEY_UP)
-        {ArrowKeys[UP_KEY]=0;}
-    else if(key == GLUT_KEY_DOWN)
-        {ArrowKeys[DOWN_KEY]=0;}
-}
-
-void arrowKeyDown(int key,int x,int y){
-    if(key == GLUT_KEY_RIGHT)
-        {ArrowKeys[RIGHT_KEY]=1;}
-    else if(key == GLUT_KEY_LEFT)
-        {ArrowKeys[LEFT_KEY]=1;}
-    else if(key == GLUT_KEY_UP)
-        {ArrowKeys[UP_KEY]=1;}
-    else if(key == GLUT_KEY_DOWN)
-        {ArrowKeys[DOWN_KEY]=1;}
-}
-
-void otherKeysUp(unsigned char key,int x,int y){
-    if(key == GLUT_KEY_SPACEBAR)
-        ArrowKeys[SPACE_KEY]=0;
-}
-
-void otherKeysDown(unsigned char key,int x,int y){
-    if(key == GLUT_KEY_SPACEBAR)
-        ArrowKeys[SPACE_KEY]=1;
+    Player1.mouseMove((float)control_Interface::getMouseX()/CurrentWidth,
+                      (float)control_Interface::getMouseY()/CurrentHeight);
 }
 
 void idleFunction(){
-    glutPostRedisplay();
+    //glutPostRedisplay();
 }
 
 void renderFunction(){
-    void * Temp;
-    shape_Object *Block,*Shadow;
-
     float ShadowData[5*MAX_FLOATING_BLOCKS];
-    float *MM;
-    short i,j;
     GLuint MMUniformLocation;
+    GLfloat ViewMat[16], ProjMat[16];
 
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
     Player1.getViewMat(ViewMat);
-
-    SimpleTexShader.useProgram("P",ProjMat);
-    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"V")
-                       ,1,GL_FALSE,ViewMat);
-
-    glBindTexture(GL_TEXTURE_2D,SceneryCube.Texture);
-    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"M"),
-                           1,GL_FALSE,SceneryCube.ModelMat);
-    (SceneryCube.Shape)->drawElements(GL_TRIANGLES);
-
-
-    glBindTexture(GL_TEXTURE_2D,Clouds.Texture);
-    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"M"),
-                           1,GL_FALSE,Clouds.ModelMat);
-    (Clouds.Shape)->drawElements(GL_TRIANGLES);
-    rotateYMatrix(0.02,Clouds.ModelMat);
+    createProjMat(ProjMat,MAX_OVERLAP,100.0f,67.0f,(float)CurrentWidth/CurrentHeight);
 
     TexShader.useProgram("P",ProjMat);
     glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"V")
                        ,1,GL_FALSE,ViewMat);
-
-    for(j=0;j<MAX_FLOATING_BLOCKS; ++j){
-        ShadowData[j*5]=1e20;
-        Shadow=FloatingBlocksQ.getData(j);
-        if(Shadow!=NULL){
-            MM=Shadow->ModelMat;
-            ShadowData[0+j*5]=MM[0];
-            ShadowData[1+j*5]=MM[10];
-            ShadowData[2+j*5]=MM[12];
-            ShadowData[3+j*5]=MM[13]-MM[5];
-            ShadowData[4+j*5]=MM[14];
-        }
+    int i;
+    for(i=0;i<MAX_FLOATING_BLOCKS*5; ++i){
+        ShadowData[i]=0;
+    }
+    i=0;
+    for(const_Reverse_Block_Iterator FloatingBlock=BlockStack.rbegin();FloatingBlock!=BlockStack.rend();++FloatingBlock){
+        if(i>=NumFloatingBlocks)break;
+        if(!FloatingBlock->isFloating())
+            continue;
+        ShadowData[0+i*5]=FloatingBlock->ModelMat[0];
+        ShadowData[1+i*5]=FloatingBlock->ModelMat[10];
+        ShadowData[2+i*5]=FloatingBlock->ModelMat[12];
+        ShadowData[3+i*5]=FloatingBlock->ModelMat[13]-FloatingBlock->ModelMat[5];
+        ShadowData[4+i*5]=FloatingBlock->ModelMat[14];
+        ++i;
     }
 
     glUniform1fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"shadow_coords")
                  ,5*MAX_FLOATING_BLOCKS,ShadowData);
 
     MMUniformLocation=glGetUniformLocation(shader_Prog::getCurrentProg(),"M");
-    Temp=BlockStack.getTop();
-    while(Temp!=NULL){
-        Block=BlockStack.getData(Temp);
+    for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
         glBindTexture(GL_TEXTURE_2D,Block->Texture);
         glUniformMatrix4fv(MMUniformLocation,1,GL_FALSE,Block->ModelMat);
         (Block->Shape)->drawElements(GL_TRIANGLES);
-        Temp=BlockStack.getNext(Temp);
     }
-    glutSwapBuffers();
 
+    SimpleTexShader.useProgram("P",ProjMat);
+    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"V"),
+                       1,GL_FALSE,ViewMat);
+
+    glBindTexture(GL_TEXTURE_2D,SceneryCube.Texture);
+    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"M"),
+                       1,GL_FALSE,SceneryCube.ModelMat);
+    (SceneryCube.Shape)->drawElements(GL_TRIANGLES);
+
+    glutSwapBuffers();
     ++FrameCount;
 }
 
@@ -401,21 +327,21 @@ void timerFunction(int n){
                 CurrentWidth,CurrentHeight,(int)(FrameCount/UNIT_TIME));
         glutSetWindowTitle(temp);
     }
-    if(rand()%NEW_BLOCK_FREQUENCY==0)
-    {
-        if(FloatingBlocks.size()<MAX_FLOATING_BLOCKS && FloorNo<=MAX_FLOOR){
-            shape_Object Next;
-            nextBlock(&Next);
-            BlockStack.push_back(Next);
-            FloatingBlocks.push_back(BlockStack.size()-1);
+    if(rand()%NEW_BLOCK_FREQUENCY==0){
+        if(NumFloatingBlocks<MAX_FLOATING_BLOCKS && FloorNo<MAX_FLOOR){
+            nextBlock();
         }
     }
-    keyCheck();
-    moveBlocks();
+    checkInput();
     movePlayer();
-    Player1.switchToPlayer();
+    for(block_Iterator Block=BlockStack.begin();Block!=BlockStack.end();++Block){
+        if(!Block->isFloating())
+            continue;
+        moveBlock(Block);
+    }
     glutTimerFunc(UNIT_TIME*1000,timerFunction,1);
     FrameCount=0;
+    glutPostRedisplay();
 }
 
 void createProjMat(float ProjMat[],float Near,float Far,float Fov,float Aspect){
@@ -571,11 +497,6 @@ void createBox(){
         1.0f,0.499f,
         1.0f,0.0f,
         0.75f,0.0f
-
-//        0.25f,0.5f,
-//        0.5f,0.5f,
-//        0.5f,0.0f,
-//        0.25f,0.0f
     };
 
     Box.createVao();
@@ -586,7 +507,7 @@ void createBox(){
     glBindVertexArray(0);
 }
 
-void nextBlock(shape_Object &Next){
+void nextBlock(){
     int BlockPos,RNo;
     short BlocksLeft;
     short x,y,i,j;
@@ -683,26 +604,26 @@ void nextBlock(shape_Object &Next){
             Heights[i][j]=Height+MaxHeight;
         }
     }
-    Next=new shape_Object();
-    Next->Shape=&Box;
-    scaleMat(Next->ModelMat,UNIT_DISTANCE*0.5f*(xn+xp-1)*0.999f,
-                            UNIT_DISTANCE*0.5f*(Height/HEIGHT_DIVISIONS),
-                            UNIT_DISTANCE*0.5f*(yn+yp-1)*0.999f);
-    translateMat(Next->ModelMat,UNIT_DISTANCE*(x-(FLOOR_SIZE-1)*0.5f+(xp-xn)*0.5f),
-                                UNIT_DISTANCE*(MAX_FLOOR+FloorNo)*2,
-                                UNIT_DISTANCE*(y-(FLOOR_SIZE-1)*0.5f+(yp-yn)*0.5f));
-    Next->Texture=Textures[(rand()%NO_OF_TEXTURES)];
+
+    shape_Object Next;
+    Next.Shape=&Box;
+    Next.Texture=Textures[(rand()%NO_OF_TEXTURES)];
+    scaleMat(Next.ModelMat,UNIT_DISTANCE*0.5f*(xn+xp-1)*0.999f,
+                           UNIT_DISTANCE*0.5f*(Height/HEIGHT_DIVISIONS),
+                           UNIT_DISTANCE*0.5f*(yn+yp-1)*0.999f);
+    translateMat(Next.ModelMat,UNIT_DISTANCE*(x-(FLOOR_SIZE-1)*0.5f+(xp-xn)*0.5f),
+                               UNIT_DISTANCE*(MAX_FLOOR+FloorNo)*2,
+                               UNIT_DISTANCE*(y-(FLOOR_SIZE-1)*0.5f+(yp-yn)*0.5f));
+    ++NumFloatingBlocks;
+    BlockStack.push_back(Next);
 }
 
 void initGame(){
-    int i,j;
-    shape_Object* Floor;
-    initMat(ProjMat);
-    ArrowKeys[0]=ArrowKeys[1]=ArrowKeys[2]=ArrowKeys[3]=0;
     FloorNo=1;
+    NumFloatingBlocks=0;
 
-    for(i=0;i<FLOOR_SIZE;++i)
-        for(j=0;j<FLOOR_SIZE;++j)
+    for(int i=0;i<FLOOR_SIZE;++i)
+        for(int j=0;j<FLOOR_SIZE;++j)
             Heights[i][j]=0.0f;
 
     TexShader.createShaders(TexVertShader,TexFragShader);
@@ -713,133 +634,109 @@ void initGame(){
     Textures[1]=loadTexture("./images/block1.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
     Textures[2]=loadTexture("./images/block2.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
     Textures[3]=loadTexture("./images/block3.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Textures[NO_OF_TEXTURES]=loadTexture("./images/floor.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Textures[NO_OF_TEXTURES+1]=loadTexture("./images/walls.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
 
     SceneryCube.Shape=&Box;
     scaleMat(SceneryCube.ModelMat,SCENE_CUBE_SIZE,SCENE_CUBE_SIZE*0.5f,SCENE_CUBE_SIZE);
     translateMat(SceneryCube.ModelMat,0,SCENE_CUBE_SIZE*0.5f,0);
     SceneryCube.Texture=loadTexture("./images/scenery.bmp",GL_CLAMP_TO_EDGE,GL_CLAMP_TO_EDGE,GL_LINEAR);
 
-    Clouds.Shape=&Box;
-    scaleMat(Clouds.ModelMat,SCENE_CUBE_SIZE,0.01,SCENE_CUBE_SIZE);
-    translateMat(Clouds.ModelMat,0,SCENE_CUBE_SIZE-0.5f,0);
-    Clouds.Texture=loadTexture("./images/clouds.bmp",GL_CLAMP_TO_EDGE,GL_CLAMP_TO_EDGE,GL_NEAREST);
-
     float WallW=0.02f;
-    float WallH=4.5f*2;
+    float WallH=MAX_FLOOR*UNIT_DISTANCE;
     float WallL=FLOOR_SIZE*UNIT_DISTANCE*0.5;
-    shape_Object *Wall1,*Wall2,*Wall3,*Wall4;
+    shape_Object Wall;
 
-    Wall1=new shape_Object();
-    Wall2=new shape_Object();
-    Wall3=new shape_Object();
-    Wall4=new shape_Object();
-    Wall1->Texture=Textures[NO_OF_TEXTURES+1];
-    Wall2->Texture=Textures[NO_OF_TEXTURES+1];
-    Wall3->Texture=Textures[NO_OF_TEXTURES+1];
-    Wall4->Texture=Textures[NO_OF_TEXTURES+1];
-    Wall1->Shape=&Box;
-    Wall2->Shape=&Box;
-    Wall3->Shape=&Box;
-    Wall4->Shape=&Box;
-    scaleMat(Wall1->ModelMat,WallW,WallH,WallL);
-    scaleMat(Wall2->ModelMat,WallW,WallH,WallL);
-    scaleMat(Wall3->ModelMat,WallL,WallH,WallW);
-    scaleMat(Wall4->ModelMat,WallL,WallH,WallW);
-    translateMat(Wall1->ModelMat,-(WallW+WallL),WallH, 0.0f);
-    translateMat(Wall2->ModelMat, (WallW+WallL),WallH, 0.0f);
-    translateMat(Wall3->ModelMat, 0.0f,WallH,-(WallW+WallL));
-    translateMat(Wall4->ModelMat, 0.0f,WallH, (WallW+WallL));
-    BlockStack.Add(Wall1);
-    BlockStack.Add(Wall2);
-    BlockStack.Add(Wall3);
-    BlockStack.Add(Wall4);
+    Wall.Texture=loadTexture("./images/walls.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Wall.Shape=&Box;
+    Wall.notFloating();
+    initMat(Wall.ModelMat);
+    scaleMat(Wall.ModelMat,WallW,WallH,WallL);
+    translateMat(Wall.ModelMat,-(WallW+WallL),WallH, 0.0f);
+    BlockStack.push_back(Wall);
+
+    initMat(Wall.ModelMat);
+    scaleMat(Wall.ModelMat,WallW,WallH,WallL);
+    translateMat(Wall.ModelMat, (WallW+WallL),WallH, 0.0f);
+    BlockStack.push_back(Wall);
+
+    initMat(Wall.ModelMat);
+    scaleMat(Wall.ModelMat,WallL,WallH,WallW);
+    translateMat(Wall.ModelMat, 0.0f,WallH,-(WallW+WallL));
+    BlockStack.push_back(Wall);
+
+    initMat(Wall.ModelMat);
+    scaleMat(Wall.ModelMat,WallL,WallH,WallW);
+    translateMat(Wall.ModelMat, 0.0f,WallH, (WallW+WallL));
+    BlockStack.push_back(Wall);
+
+    shape_Object Floor;
+    Floor.Shape=&Box;
+    Floor.Texture=loadTexture("./images/floor.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Floor.notFloating();
+    scaleMat(Floor.ModelMat,FLOOR_SIZE*UNIT_DISTANCE*0.5,0.5f,FLOOR_SIZE*UNIT_DISTANCE*0.5);
+    translateMat(Floor.ModelMat,0,-0.25f,0);
+    BlockStack.push_back(Floor);
 
     Player1.setPlayerHeightWidth(PLAYER_HEIGHT,PLAYER_WIDTH);
-    Player1.Texture=Textures[NO_OF_TEXTURES];
+    Player1.Texture=0;
     Player1.setShape(&Box);
-
-    Floor=new shape_Object();
-    Floor->Shape=&Box;
-    scaleMat(Floor->ModelMat,FLOOR_SIZE*UNIT_DISTANCE*0.5,0.5f,FLOOR_SIZE*UNIT_DISTANCE*0.5);
-    translateMat(Floor->ModelMat,0,-0.25f,0);
-    Floor->Texture=Textures[NO_OF_TEXTURES];
-    BlockStack.Add(Floor);
 }
 
 void movePlayer(){
-    void *Temp;
-    shape_Object* Block;
-    float TimeRev;
     bool VelResetFlag=false;
 
     Player1.posUpdate(UNIT_TIME);
-    Temp=BlockStack.getTop();
-    while(Temp!=NULL){
-        Block=BlockStack.getData(Temp);
+
+    for(const_Block_Iterator Block=BlockStack.begin();Block!=BlockStack.end();++Block){
         Player1.switchToPlayer();
-        if(Player1.simpleCuboidCollision(Block->ModelMat)){
-            TimeRev=0;
+        if(Player1.simpleCuboidCollision(*Block)){
+            float TimeRev=0;
             if(Player1.velocityMaxComponent()>1e-5)
-                TimeRev=Player1.reduceOverlap(Block,true);
+                TimeRev=Player1.reduceOverlap(*Block,true);
             Player1.switchToPlayerFeet();
-            if(Player1.simpleCuboidCollision(Block->ModelMat)){
+            if(Player1.simpleCuboidCollision(*Block)){
                 if(Player1.velocityMaxComponent()>=MAX_VELOCITY*LETHAL_VELOCITY_MULTIPLIER)
                     Player1.reduceLives();
                 VelResetFlag=true;
                 break;
             }
             Player1.switchToPlayerHead();
-            if(Player1.simpleCuboidCollision(Block->ModelMat)){
+            if(Player1.simpleCuboidCollision(*Block)){
                 VelResetFlag=true;
                 break;
             }
             Player1.posUpdate(TimeRev);
         }
-        Temp=BlockStack.getNext(Temp);
     }
     if(VelResetFlag)
         Player1.resetVelocity();
     else
         Player1.velUpdate(Gravity,UNIT_TIME);
-
 }
 
-void moveBlocks(){
-    float TimeRev;
-    void *Temp;
-    shape_Object *Block;
-    shape_Object *TempBlock;
+void moveBlock(block_Iterator& FloatingBlock){
+    FloatingBlock->velUpdate(Gravity,UNIT_TIME);
+    FloatingBlock->posUpdate(UNIT_TIME);
 
-    for(short i=FloatingBlocksQ.getFront();i!=-1;i=FloatingBlocksQ.getNext(i)){
-        Block=FloatingBlocksQ.getData(i);
-        Block->velUpdate(Gravity,UNIT_TIME);
-        Block->posUpdate(UNIT_TIME);
-
-        Player1.switchToPlayer();
-        if(Block->simpleCuboidCollision(Player1.ModelMat)){
-            TimeRev=Block->reduceOverlap((shape_Object*)&Player1,true);
-            Player1.switchToPlayerHead();
-            if(Block->simpleCuboidCollision(Player1.ModelMat))
-                Player1.reduceLives(FloorNo);
-            Block->posUpdate(TimeRev);
+    Player1.switchToPlayer();
+    if(FloatingBlock->simpleCuboidCollision((shape_Object)Player1)){
+        float TimeRev=FloatingBlock->reduceOverlap((shape_Object)Player1,true);
+        Player1.switchToPlayerHead();
+        if(FloatingBlock->simpleCuboidCollision((shape_Object)Player1)){
+            Player1.reduceLives(FloorNo);
         }
+        FloatingBlock->posUpdate(TimeRev);
+    }
 
-        Temp=BlockStack.getTop();
-        while(Temp!=NULL){
-            TempBlock=BlockStack.getData(Temp);
-            if(Block->simpleCuboidCollision(TempBlock->ModelMat)){
-                if(Block!=TempBlock){
-                    FloatingBlocksQ.removeElement(Block);
-                    TimeRev=Block->reduceOverlap(TempBlock,true);
-                    Block->resetVelocity();
-                    break;
-                }
-            }
-            Temp=BlockStack.getNext(Temp);
+    for(const_Block_Iterator Block=BlockStack.begin();Block!=BlockStack.end();++Block){
+        if(Block==FloatingBlock)
+            continue;
+        if(FloatingBlock->simpleCuboidCollision(*Block)){
+            --NumFloatingBlocks;
+            FloatingBlock->notFloating();
+            FloatingBlock->reduceOverlap(*Block,true);
+            FloatingBlock->resetVelocity();
+            break;
         }
     }
 }
-
 
