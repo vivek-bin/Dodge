@@ -2,7 +2,7 @@
 #define SHADERCODE(x) SHADERCODEPRE(x)
 #define SHADERCODEPRE(x) "#version 400\n" #x
 
-#define FLOOR_SIZE 6
+#define FLOOR_SIZE 8
 #define FLOOR_HEIGHT 0.0f
 #define HEIGHT_DIVISIONS 1
 #define NO_OF_TEXTURES 4
@@ -24,7 +24,7 @@
 #define MAX_OVERLAP 0.001f
 #define MAX_BLOCK_SIZE 3
 #define MAX_BLOCK_HEIGHT 5
-#define MAX_FLOOR 25
+#define MAX_FLOOR 4
 #define MIN_SHADOW 0.8f
 #define MAX_SHADOW 0.1f
 
@@ -32,8 +32,8 @@
 #define PLAYER_WIDTH 0.1f
 #define FEET_HEAD_WIDTH_SCALE 0.8f
 #define BODY_WIDTH_SCALE 1.0f
-#define FEET_HEAD_HEIGHT_SCALE 0.1f
-#define BODY_HEIGHT_SCALE 0.8f
+#define FEET_HEAD_HEIGHT_SCALE 0.05f
+#define BODY_HEIGHT_SCALE (1.0f-2*FEET_HEAD_HEIGHT_SCALE)
 
 #define KEY_ROTATESPEED 100.0f
 #define KEY_MOVESPEED 2.5f

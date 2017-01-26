@@ -330,20 +330,11 @@ public:
         return Floating;
     }
 
-    void notFloating(){
-        Floating=false;
-    }
-
     void resetVelocity(){
         ObjVelocity[0]=0.0f;
         ObjVelocity[1]=0.0f;
         ObjVelocity[2]=0.0f;
-    }
-
-    void setVelocity(float Vx,float Vy,float Vz){
-        ObjVelocity[0]=Vx;
-        ObjVelocity[1]=Vy;
-        ObjVelocity[2]=Vz;
+        Floating=false;
     }
 
     void velUpdate(float const Acc[4],float Time){
@@ -360,21 +351,18 @@ public:
         translateMat(ModelMat,ObjVelocity[0]*Time,ObjVelocity[1]*Time,ObjVelocity[2]*Time);
     }
 
-    virtual void posUpdate(float const Velocity[],float Time){
-        translateMat(ModelMat,Velocity[0]*Time,Velocity[1]*Time,Velocity[2]*Time);
-    }
 
     float velocityMaxComponent() const{
         if(ObjVelocity[0]*ObjVelocity[0]>ObjVelocity[1]*ObjVelocity[1])
             if(ObjVelocity[0]*ObjVelocity[0]>ObjVelocity[2]*ObjVelocity[2])
-                return (ObjVelocity[0]>0?ObjVelocity[0]:-ObjVelocity[0]);
+                return fabs(ObjVelocity[0]);
             else
-                return (ObjVelocity[2]>0?ObjVelocity[2]:-ObjVelocity[2]);
+                return fabs(ObjVelocity[2]);
         else
             if(ObjVelocity[1]*ObjVelocity[1]>ObjVelocity[2]*ObjVelocity[2])
-                return (ObjVelocity[1]>0?ObjVelocity[1]:-ObjVelocity[1]);
+                return fabs(ObjVelocity[1]);
             else
-                return (ObjVelocity[2]>0?ObjVelocity[2]:-ObjVelocity[2]);
+                return fabs(ObjVelocity[2]);
     }
 
     bool onFloor() const{
@@ -405,7 +393,7 @@ public:
         float TimeSlice,TimeRev;
         TimeRev=TimeSlice=UNIT_TIME/2;
         posUpdate(-TimeSlice);
-        while(velocityMaxComponent()*TimeSlice>MAX_OVERLAP){
+        while(TimeSlice>MAX_OVERLAP/MAX_VELOCITY){
             TimeSlice/=2;
             if(simpleCuboidCollision(Piece)){
                 posUpdate(-TimeSlice);
@@ -425,37 +413,6 @@ public:
         else{
             if(Overlap){
                 posUpdate(TimeSlice);
-                TimeRev-=TimeSlice;
-            }
-        }
-
-        return TimeRev;
-    }
-
-    float reduceOverlap(float const * const Velocity,const shape_Object& Piece,bool Overlap){
-        float TimeSlice,TimeRev;
-        TimeRev=TimeSlice=UNIT_TIME/2;
-        posUpdate(Velocity,-TimeSlice);
-        while(velocityMaxComponent()*TimeSlice>MAX_OVERLAP){
-            TimeSlice/=2;
-            if(simpleCuboidCollision(Piece)){
-                posUpdate(Velocity,-TimeSlice);
-                TimeRev+=TimeSlice;
-            }
-            else{
-                posUpdate(Velocity,TimeSlice);
-                TimeRev-=TimeSlice;
-            }
-        }
-        if(simpleCuboidCollision(Piece)){
-            if(!Overlap){
-                posUpdate(Velocity,-TimeSlice);
-                TimeRev+=TimeSlice;
-            }
-        }
-        else{
-            if(Overlap){
-                posUpdate(Velocity,TimeSlice);
                 TimeRev-=TimeSlice;
             }
         }
@@ -470,7 +427,7 @@ private:
     float Height,Width;
     enum playerPart{Whole,Body,Feet,Head} PlayerPart;
     float Camera[4],Forward[4],Up[4],MouseXAngle,MouseYAngle;
-    char Lives;
+    short Lives;
 
     void setMatPosition(){
         ModelMat[12]=Camera[0];
@@ -486,7 +443,7 @@ public:
 
     player_Class(): shape_Object(){
         PlayerPart=Whole;
-        Lives=1;
+        Lives=100;
         Width=Height=0.0f;
 
          Camera[0]=0.0f; Camera[1]=PLAYER_HEIGHT+5;  Camera[2]=0.0f; Camera[3]=1.0f;
@@ -502,14 +459,19 @@ public:
         return Lives;
     }
 
+    bool isFloating(){
+        return Floating;
+    }
+
     void reduceLives(const char FlrN){
-        --Lives;std::cout<<Lives;
-        Camera[1]=(FlrN+6)*UNIT_DISTANCE;
+        --Lives;
+        Camera[1]=(FlrN+8)*UNIT_DISTANCE;
         setMatPosition();
+        Floating=true;
     }
 
     void reduceLives(){
-        --Lives;std::cout<<Lives;
+        --Lives;
     }
 
     void setPlayerHeightWidth(float H,float W){
@@ -571,7 +533,7 @@ public:
         PlayerPart=Whole;
     }
 
-    void getViewMat(float ViewMat[]){
+    void getViewMat(float ViewMat[]) const{
         float TempForward[4],TempRight[4],TempUp[4];
         float TmpQuatX[4],TmpQuatY[4],TmpQuatXY[4],TempMat[16];
 
@@ -606,7 +568,7 @@ public:
     void rotateAboutCamera(float RotateSpeed,float Time){
         float TempMat[16];
         initMat(TempMat);
-        rotateYMatrix(RotateSpeed*Time,TempMat);
+        rotateYMatrix(KEY_ROTATESPEED*RotateSpeed*Time,TempMat);
         multiplyMatMV(TempMat,Forward,4);
         multiplyMatMV(TempMat,Up,4);
     }
@@ -619,8 +581,10 @@ public:
     }
 
     void jumpPlayer(){
-        setVelocity(0.0f,JUMP_VELOCITY,0.0f);
-//        setMatPosition();
+        if(Floating || velocityMaxComponent()>1e-10)
+            return;
+        ObjVelocity[1]=JUMP_VELOCITY;
+        Floating=true;
     }
 
     void posUpdate(float Time){
@@ -631,12 +595,43 @@ public:
         setMatPosition();
     }
 
-    void posUpdate(float const Velocity[],float Time){
-        Camera[0]+=Velocity[0]*Time;
-        Camera[1]+=Velocity[1]*Time;
-        Camera[2]+=Velocity[2]*Time;
+    void forwardPosUpdate(int Direction,float Time){
+        Camera[0]+=Direction*KEY_MOVESPEED*Forward[0]*Time;
+        Camera[1]+=Direction*KEY_MOVESPEED*Forward[1]*Time;
+        Camera[2]+=Direction*KEY_MOVESPEED*Forward[2]*Time;
 
         setMatPosition();
+    }
+
+    float reduceForwardOverlap(int Direction,const shape_Object& Piece,bool Overlap){
+        float TimeSlice,TimeRev;
+        TimeRev=TimeSlice=UNIT_TIME/2;
+        forwardPosUpdate(Direction,-TimeSlice);
+        while(TimeSlice>MAX_OVERLAP/MAX_VELOCITY){
+            TimeSlice/=2;
+            if(simpleCuboidCollision(Piece)){
+                forwardPosUpdate(Direction,-TimeSlice);
+                TimeRev+=TimeSlice;
+            }
+            else{
+                forwardPosUpdate(Direction,TimeSlice);
+                TimeRev-=TimeSlice;
+            }
+        }
+        if(simpleCuboidCollision(Piece)){
+            if(!Overlap){
+                forwardPosUpdate(Direction,-TimeSlice);
+                TimeRev+=TimeSlice;
+            }
+        }
+        else{
+            if(Overlap){
+                forwardPosUpdate(Direction,TimeSlice);
+                TimeRev-=TimeSlice;
+            }
+        }
+
+        return TimeRev;
     }
 
 };

@@ -201,9 +201,10 @@ void rotateMatrixByQuat(float Quat[],float Mat[]){
 }
 
 void createQuat(float Axis[],float Angle,float Quat[]){
-    Quat[QUAT_X]=Axis[0]*sin(Angle/2);
-    Quat[QUAT_Y]=Axis[1]*sin(Angle/2);
-    Quat[QUAT_Z]=Axis[2]*sin(Angle/2);
-    Quat[QUAT_A]=cos(Angle/2);
+    Angle/=2;
+    Quat[QUAT_X]=Axis[0]*sin(Angle);
+    Quat[QUAT_Y]=Axis[1]*sin(Angle);
+    Quat[QUAT_Z]=Axis[2]*sin(Angle);
+    Quat[QUAT_A]=cos(Angle);
 }
 

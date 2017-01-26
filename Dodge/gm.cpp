@@ -24,9 +24,9 @@ bool control_Interface::ArrowKeys[];
 int  control_Interface::MouseX;
 int  control_Interface::MouseY;
 
-float const Gravity[4]={0.0f, -10.0f, 0.0f, 0.0f};
+float const Gravity[4]={0.0f, -9.0f, 0.0f, 0.0f};
 
-int CurrentWidth = 800*3/2, CurrentHeight = 600*3/2, WindowHandle = 0, FrameCount = 0;
+int CurrentWidth = 1366, CurrentHeight = 705, WindowHandle = 0, FrameCount = 0;
 
 GLuint Textures[NO_OF_TEXTURES];
 
@@ -225,35 +225,31 @@ void initWindow(int argc,char* argv[]){
 }
 
 void checkInput(){
-    float TempVec[4];
+    int ForwardDirection,SideDirection;
+
+    ForwardDirection=control_Interface::verticalCtrl();
+    SideDirection=control_Interface::horizontalCtrl();
 
     Player1.switchToPlayerBody();
-    Player1.rotateAboutCamera(KEY_ROTATESPEED*control_Interface::horizontalCtrl(),UNIT_TIME);
-    if(control_Interface::verticalCtrl()!=0){
-        Player1.getForwardVelocity(TempVec,KEY_MOVESPEED*control_Interface::verticalCtrl());
-        Player1.posUpdate(TempVec,UNIT_TIME);
+    Player1.rotateAboutCamera(SideDirection,UNIT_TIME);
+    if(ForwardDirection!=0){
+        Player1.forwardPosUpdate(ForwardDirection,UNIT_TIME);
         for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
             if(Player1.simpleCuboidCollision(*Block)){
-                Player1.reduceOverlap(TempVec,*Block,false);
+                Player1.reduceForwardOverlap(ForwardDirection,*Block,false);
                 break;
             }
         }
     }
     if(control_Interface::jump()){
-        Player1.switchToPlayerFeet();
-        for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
-            if(Player1.simpleCuboidCollision(*Block)){
-                Player1.jumpPlayer();
-                break;
-            }
-        }
+        Player1.jumpPlayer();
     }
     Player1.mouseMove((float)control_Interface::getMouseX()/CurrentWidth,
                       (float)control_Interface::getMouseY()/CurrentHeight);
 }
 
 void idleFunction(){
-    //glutPostRedisplay();
+//    glutPostRedisplay();
 }
 
 void renderFunction(){
@@ -508,15 +504,14 @@ void createBox(){
 }
 
 void nextBlock(){
-    int BlockPos,RNo;
-    short BlocksLeft;
-    short x,y,i,j;
-    short xn,xp,yn,yp,Height,MaxHeight;
-    char flag;
+    int BlockPos,BlocksLeft;
+    int x,y,xn,xp,yn,yp;
 
+    //get block position
     do{
-        for(BlocksLeft=i=0;i<FLOOR_SIZE;++i)
-            for(j=0;j<FLOOR_SIZE;++j)
+        BlocksLeft=0;
+        for(int i=0;i<FLOOR_SIZE;++i)
+            for(int j=0;j<FLOOR_SIZE;++j)
                 if(Heights[i][j]<FloorNo*HEIGHT_DIVISIONS)
                     ++BlocksLeft;
 
@@ -524,7 +519,7 @@ void nextBlock(){
         if(FloorNo>MAX_FLOOR)return;
     }while(BlocksLeft==0);
 
-    BlockPos=(rand()>>2)%BlocksLeft;
+    BlockPos=rand()%BlocksLeft;
     for(x=0; x<FLOOR_SIZE ;++x){
         for(y=0; y<FLOOR_SIZE ;++y){
             if(Heights[x][y]<FloorNo*HEIGHT_DIVISIONS)
@@ -533,78 +528,73 @@ void nextBlock(){
         }
         if(BlockPos<0)break;
     }
-    for(i=x,j=y,xn=1;i>0;--i){
-        if(Heights[i-1][j] >= FloorNo*HEIGHT_DIVISIONS)
-            break;
-        ++xn;if(xn>=MAX_BLOCK_SIZE)break;
+
+    //get block size
+    int Width,Length;
+    Width=(rand()%MAX_BLOCK_SIZE)+1;
+    Length=(rand()%MAX_BLOCK_SIZE)+1;
+
+    xn=xp=yn=yp=1;
+    while((x-xn>=0) && (xn<Width) && (Heights[x-xn][y]<FloorNo*HEIGHT_DIVISIONS)){
+        ++xn;
     }
-    for(i=x,j=y,xp=1;i<FLOOR_SIZE-1;++i){
-        if(Heights[i+1][j] >= FloorNo*HEIGHT_DIVISIONS)
-            break;
-        ++xp;if(xp>=MAX_BLOCK_SIZE)break;
+    while((x+xp<FLOOR_SIZE) && (xp<Width) && (Heights[x+xp][y]<FloorNo*HEIGHT_DIVISIONS)){
+        ++xp;
     }
-    for(i=x,j=y,yn=1;j>0;--j){
-        if(Heights[i][j-1] >= FloorNo*HEIGHT_DIVISIONS)
-            break;
-        ++yn;if(yn>=MAX_BLOCK_SIZE)break;
+    while((y-yn>=0) && (yn<Length) && (Heights[x][y-yn]<FloorNo*HEIGHT_DIVISIONS)){
+        ++yn;
     }
-    for(i=x,j=y,yp=1;j<FLOOR_SIZE-1;++j){
-        if(Heights[i][j+1] >= FloorNo*HEIGHT_DIVISIONS)
-            break;
-        ++yp;if(yp>=MAX_BLOCK_SIZE)break;
+    while((y+yp<FLOOR_SIZE) && (yp<Length) && (Heights[x][y+yp]<FloorNo*HEIGHT_DIVISIONS)){
+        ++yp;
     }
 
+    bool flag;
     do{
-        flag=0;
-        for(i=x-xn+1;(i<=x+xp-1)&&(flag==0);++i){
-            for(j=y-yn+1;(j<=y+yp-1)&&(flag==0);++j){
+        flag=false;
+        for(int i=x-xn+1;i<x+xp && !flag;++i){
+            for(int j=y-yn+1;j<y+yp && !flag;++j){
                 if(Heights[i][j]>=FloorNo*HEIGHT_DIVISIONS){
-                    flag=1;
-                    i-=x;j-=y;
-                    if(i<0 && j<0)
-                            if(-i>-j)xn=-i;else yn=-j;
-                    else if(i<0 && j>0)
-                            if(-i>j)xn=-i;else yp=j;
-                    else if(i>0 && j<0)
-                            if(i>-j)xp=i;else yn=-j;
-                    else
-                            if(i>j)xp=i;else yp=j;
+                    flag=true;
+                    if(abs(i-x)>abs(j-y)){
+                        if(i>x)xp=abs(i-x);
+                        else   xn=abs(i-x);
+                    }
+                    else{
+                        if(j>y)yp=abs(j-y);
+                        else   yn=abs(j-y);
+                    }
                 }
             }
         }
-    }while(flag==1);
+    }while(flag);
 
-    RNo=rand();
-    i=(RNo%MAX_BLOCK_SIZE)+1;
-    while(xn+xp>i+1){
+    while(xn+xp-1>Width){
         if(xn>xp)--xn;
-        else --xp;
+        else     --xp;
     }
 
-    RNo>>=4;
-    i=(RNo%MAX_BLOCK_SIZE)+1;
-    while(yn+yp>i+1){
+    while(yn+yp-1>Length){
         if(yn>yp)--yn;
-        else --yp;
+        else     --yp;
     }
 
     //generate random height
-    RNo>>=4;
-    Height=(RNo%MAX_BLOCK_HEIGHT)+1;
+    int Height=(rand()%MAX_BLOCK_HEIGHT)+1;
 
-    MaxHeight=0;
-    for(i=x-xn+1;i<=x+xp-1;++i){
-        for(j=y-yn+1;j<=y+yp-1;++j){
+    int MaxHeight=0;
+    for(int i=x-xn+1;i<x+xp;++i){
+        for(int j=y-yn+1;j<y+yp;++j){
             if(Heights[i][j]>MaxHeight)
                 MaxHeight=Heights[i][j];
         }
     }
-    for(i=x-xn+1;i<=x+xp-1;++i){
-        for(j=y-yn+1;j<=y+yp-1;++j){
+    for(int i=x-xn+1;i<x+xp;++i){
+        for(int j=y-yn+1;j<y+yp;++j){
             Heights[i][j]=Height+MaxHeight;
         }
     }
 
+    //create the block
     shape_Object Next;
     Next.Shape=&Box;
     Next.Texture=Textures[(rand()%NO_OF_TEXTURES)];
@@ -647,7 +637,7 @@ void initGame(){
 
     Wall.Texture=loadTexture("./images/walls.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
     Wall.Shape=&Box;
-    Wall.notFloating();
+    Wall.resetVelocity();
     initMat(Wall.ModelMat);
     scaleMat(Wall.ModelMat,WallW,WallH,WallL);
     translateMat(Wall.ModelMat,-(WallW+WallL),WallH, 0.0f);
@@ -671,7 +661,7 @@ void initGame(){
     shape_Object Floor;
     Floor.Shape=&Box;
     Floor.Texture=loadTexture("./images/floor.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Floor.notFloating();
+    Floor.resetVelocity();
     scaleMat(Floor.ModelMat,FLOOR_SIZE*UNIT_DISTANCE*0.5,0.5f,FLOOR_SIZE*UNIT_DISTANCE*0.5);
     translateMat(Floor.ModelMat,0,-0.25f,0);
     BlockStack.push_back(Floor);
@@ -689,8 +679,8 @@ void movePlayer(){
     for(const_Block_Iterator Block=BlockStack.begin();Block!=BlockStack.end();++Block){
         Player1.switchToPlayer();
         if(Player1.simpleCuboidCollision(*Block)){
-            float TimeRev=0;
-            if(Player1.velocityMaxComponent()>1e-5)
+            float TimeRev;
+            if(Player1.velocityMaxComponent()>1e-10)
                 TimeRev=Player1.reduceOverlap(*Block,true);
             Player1.switchToPlayerFeet();
             if(Player1.simpleCuboidCollision(*Block)){
@@ -732,7 +722,6 @@ void moveBlock(block_Iterator& FloatingBlock){
             continue;
         if(FloatingBlock->simpleCuboidCollision(*Block)){
             --NumFloatingBlocks;
-            FloatingBlock->notFloating();
             FloatingBlock->reduceOverlap(*Block,true);
             FloatingBlock->resetVelocity();
             break;
