@@ -35,8 +35,9 @@
 			<Add option="-Wall" />
 		</Compiler>
 		<Unit filename="classes.cpp" />
+		<Unit filename="classes.h" />
 		<Unit filename="defines.h" />
-		<Unit filename="gm.cpp" />
+		<Unit filename="main.cpp" />
 		<Unit filename="mat_funcs.c">
 			<Option compilerVar="CC" />
 		</Unit>
