@@ -219,7 +219,7 @@
 	<math.h>
 	"physics.h"
 
-1485454829 source:e:\vivekprojects\gametry1\dodge\classes.cpp
+1488569550 source:e:\vivekprojects\gametry1\dodge\classes.cpp
 	"defines.h"
 	<GL/glew.h>
 	<GL/freeglut.h>
@@ -227,12 +227,13 @@
 	<stdio.h>
 	<math.h>
 	"mat_funcs.h"
+	"classes.h"
 
-1485455692 e:\vivekprojects\gametry1\dodge\defines.h
+1488570151 e:\vivekprojects\gametry1\dodge\defines.h
 
 1464435864 e:\vivekprojects\gametry1\dodge\mat_funcs.h
 
-1485454008 source:e:\vivekprojects\gametry1\dodge\gm.cpp
+1488566080 source:e:\vivekprojects\gametry1\dodge\gm.cpp
 	"defines.h"
 	<iostream>
 	<fstream>
@@ -280,4 +281,24 @@
 	"mat_funcs.h"
 
 1468748191 source:e:\vivekprojects\gametry1\dodge\physics.cpp
+
+1488569402 e:\vivekprojects\gametry1\dodge\classes.h
+
+1488569191 source:e:\vivekprojects\gametry1\dodge\main.cpp
+	"defines.h"
+	<iostream>
+	<fstream>
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	<ctime>
+	<cstdlib>
+	<GL/glew.h>
+	<GL/freeglut.h>
+	<math.h>
+	<list>
+	<vector>
+	"stb_image.h"
+	"mat_funcs.h"
+	"classes.h"
 

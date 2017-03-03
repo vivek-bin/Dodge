@@ -17,12 +17,8 @@
 #include "stb_image.h"
 
 #include "mat_funcs.h"
-#include "classes.cpp"
+#include "classes.h"
 
-GLuint shader_Prog::CurrentProg;
-bool control_Interface::ArrowKeys[];
-int  control_Interface::MouseX;
-int  control_Interface::MouseY;
 
 float const Gravity[4]={0.0f, -9.0f, 0.0f, 0.0f};
 
@@ -34,15 +30,16 @@ base_Shape Box;
 
 shader_Prog TexShader, SimpleTexShader;
 
-char Heights[FLOOR_SIZE][FLOOR_SIZE];
+int Heights[FLOOR_SIZE][FLOOR_SIZE];
 
-int FloorNo, NumFloatingBlocks;
+int FloorNo, NumFloatingBlocks, TotalBlocks;
 
 player_Class Player1;
 
 shape_Object SceneryCube;
 
 std::vector<shape_Object> BlockStack;
+std::vector<int> FloorBlockCount;
 
 typedef std::vector<shape_Object>::iterator block_Iterator;
 typedef std::vector<shape_Object>::const_iterator const_Block_Iterator;
@@ -262,9 +259,6 @@ void renderFunction(){
     Player1.getViewMat(ViewMat);
     createProjMat(ProjMat,MAX_OVERLAP,100.0f,67.0f,(float)CurrentWidth/CurrentHeight);
 
-    TexShader.useProgram("P",ProjMat);
-    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"V")
-                       ,1,GL_FALSE,ViewMat);
     int i;
     for(i=0;i<MAX_FLOATING_BLOCKS*5; ++i){
         ShadowData[i]=0;
@@ -281,6 +275,10 @@ void renderFunction(){
         ShadowData[4+i*5]=FloatingBlock->ModelMat[14];
         ++i;
     }
+
+    TexShader.useProgram("P",ProjMat);
+    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"V")
+                       ,1,GL_FALSE,ViewMat);
 
     glUniform1fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"shadow_coords")
                  ,5*MAX_FLOATING_BLOCKS,ShadowData);
@@ -512,17 +510,24 @@ void nextBlock(){
         BlocksLeft=0;
         for(int i=0;i<FLOOR_SIZE;++i)
             for(int j=0;j<FLOOR_SIZE;++j)
-                if(Heights[i][j]<FloorNo*HEIGHT_DIVISIONS)
+                if(Heights[i][j]<FloorNo)
                     ++BlocksLeft;
 
-        if(BlocksLeft==0)++FloorNo;
-        if(FloorNo>MAX_FLOOR)return;
+        if(BlocksLeft==0){
+            FloorBlockCount.push_back(TotalBlocks);
+            if(FloorNo > MAX_BLOCK_HEIGHT+2){
+                std::vector<shape_Object>::iterator StartPosition = BlockStack.begin() + FloorBlockCount[0];
+                int NumToErase = FloorBlockCount[FloorNo-MAX_BLOCK_HEIGHT-2]-FloorBlockCount[FloorNo-MAX_BLOCK_HEIGHT-2-1];
+                BlockStack.erase(StartPosition,StartPosition + NumToErase);
+            }
+            ++FloorNo;
+        }
     }while(BlocksLeft==0);
 
     BlockPos=rand()%BlocksLeft;
     for(x=0; x<FLOOR_SIZE ;++x){
         for(y=0; y<FLOOR_SIZE ;++y){
-            if(Heights[x][y]<FloorNo*HEIGHT_DIVISIONS)
+            if(Heights[x][y]<FloorNo)
                 --BlockPos;
             if(BlockPos<0)break;
         }
@@ -535,16 +540,16 @@ void nextBlock(){
     Length=(rand()%MAX_BLOCK_SIZE)+1;
 
     xn=xp=yn=yp=1;
-    while((x-xn>=0) && (xn<Width) && (Heights[x-xn][y]<FloorNo*HEIGHT_DIVISIONS)){
+    while((x-xn>=0) && (xn<Width) && (Heights[x-xn][y]<FloorNo)){
         ++xn;
     }
-    while((x+xp<FLOOR_SIZE) && (xp<Width) && (Heights[x+xp][y]<FloorNo*HEIGHT_DIVISIONS)){
+    while((x+xp<FLOOR_SIZE) && (xp<Width) && (Heights[x+xp][y]<FloorNo)){
         ++xp;
     }
-    while((y-yn>=0) && (yn<Length) && (Heights[x][y-yn]<FloorNo*HEIGHT_DIVISIONS)){
+    while((y-yn>=0) && (yn<Length) && (Heights[x][y-yn]<FloorNo)){
         ++yn;
     }
-    while((y+yp<FLOOR_SIZE) && (yp<Length) && (Heights[x][y+yp]<FloorNo*HEIGHT_DIVISIONS)){
+    while((y+yp<FLOOR_SIZE) && (yp<Length) && (Heights[x][y+yp]<FloorNo)){
         ++yp;
     }
 
@@ -553,7 +558,7 @@ void nextBlock(){
         flag=false;
         for(int i=x-xn+1;i<x+xp && !flag;++i){
             for(int j=y-yn+1;j<y+yp && !flag;++j){
-                if(Heights[i][j]>=FloorNo*HEIGHT_DIVISIONS){
+                if(Heights[i][j]>=FloorNo){
                     flag=true;
                     if(abs(i-x)>abs(j-y)){
                         if(i>x)xp=abs(i-x);
@@ -599,18 +604,26 @@ void nextBlock(){
     Next.Shape=&Box;
     Next.Texture=Textures[(rand()%NO_OF_TEXTURES)];
     scaleMat(Next.ModelMat,UNIT_DISTANCE*0.5f*(xn+xp-1)*0.999f,
-                           UNIT_DISTANCE*0.5f*(Height/HEIGHT_DIVISIONS),
+                           UNIT_DISTANCE*0.5f*Height,
                            UNIT_DISTANCE*0.5f*(yn+yp-1)*0.999f);
     translateMat(Next.ModelMat,UNIT_DISTANCE*(x-(FLOOR_SIZE-1)*0.5f+(xp-xn)*0.5f),
-                               UNIT_DISTANCE*(MAX_FLOOR+FloorNo)*2,
+                               UNIT_DISTANCE*(8+FloorNo)*2,
                                UNIT_DISTANCE*(y-(FLOOR_SIZE-1)*0.5f+(yp-yn)*0.5f));
     ++NumFloatingBlocks;
+    ++TotalBlocks;
     BlockStack.push_back(Next);
 }
 
 void initGame(){
     FloorNo=1;
     NumFloatingBlocks=0;
+    TotalBlocks=5;   //walls and floor
+
+    FloorBlockCount.clear();
+    FloorBlockCount.reserve(50);
+    BlockStack.clear();
+    BlockStack.reserve(100);
+    FloorBlockCount.push_back(TotalBlocks);
 
     for(int i=0;i<FLOOR_SIZE;++i)
         for(int j=0;j<FLOOR_SIZE;++j)
@@ -684,8 +697,6 @@ void movePlayer(){
                 TimeRev=Player1.reduceOverlap(*Block,true);
             Player1.switchToPlayerFeet();
             if(Player1.simpleCuboidCollision(*Block)){
-                if(Player1.velocityMaxComponent()>=MAX_VELOCITY*LETHAL_VELOCITY_MULTIPLIER)
-                    Player1.reduceLives();
                 VelResetFlag=true;
                 break;
             }
