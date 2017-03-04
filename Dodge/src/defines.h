@@ -4,7 +4,7 @@
 
 #define FLOOR_SIZE 8
 #define FLOOR_HEIGHT 0.0f
-#define NO_OF_TEXTURES 4
+#define NO_OF_TEXTURES 6
 #define NEW_BLOCK_FREQUENCY 20
 #define UNIT_DISTANCE 0.5f
 #define UNIT_TIME 0.01f

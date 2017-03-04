@@ -26,7 +26,7 @@
 
 float const Gravity[4]={0.0f, -9.0f, 0.0f, 0.0f};
 
-int CurrentWidth = 1366/3, CurrentHeight = 705/3, WindowHandle = 0, FrameCount = 0;
+int CurrentWidth = 1366, CurrentHeight = 705, WindowHandle = 0, FrameCount = 0;
 
 GLuint Textures[NO_OF_TEXTURES];
 
@@ -61,8 +61,8 @@ const GLchar* TexVertShader = { SHADERCODE(
  out vec3 fg_Normal;
  out vec4 fg_Position;
  void main(){
-     fg_TexCoords.x=in_TexCoords.x*2*(M[0][0]+M[2][2]);
-     fg_TexCoords.y=in_TexCoords.y*(M[1][1]+M[2][2]);
+     fg_TexCoords.x=in_TexCoords.x*3*(M[0][0]+M[2][2]);
+     fg_TexCoords.y=in_TexCoords.y*3*(M[1][1]+M[2][2]);
      fg_Position=M*in_Position;
      gl_Position=P*V*M*in_Position;
      fg_Normal=vec3(normalize(M*vec4(in_Normal,0.0)));
@@ -490,10 +490,10 @@ void createBox(){
         0.25f,0.0f,
         0.0f,0.0f,
 
+        0.5f,0.499f,
         0.75f,0.499f,
-        1.0f,0.499f,
-        1.0f,0.0f,
-        0.75f,0.0f
+        0.75f,0.0f,
+        0.5f,0.0f
     };
 
     Box.createVao();
@@ -640,6 +640,8 @@ void initGame(){
     Textures[1]=loadTexture("./images/block1.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
     Textures[2]=loadTexture("./images/block2.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
     Textures[3]=loadTexture("./images/block3.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[4]=loadTexture("./images/block4.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[5]=loadTexture("./images/block5.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
 
     SceneryCube.Shape=&Box;
     scaleMat(SceneryCube.ModelMat,SCENE_CUBE_SIZE,SCENE_CUBE_SIZE*0.5f,SCENE_CUBE_SIZE);
