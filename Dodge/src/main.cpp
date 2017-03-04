@@ -17,12 +17,16 @@
 #include "stb_image.h"
 
 #include "mat_funcs.h"
-#include "classes.h"
+#include "base_Shape.h"
+#include "shape_Object.h"
+#include "player_Class.h"
+#include "control_Interface.h"
+#include "shader_Prog.h"
 
 
 float const Gravity[4]={0.0f, -9.0f, 0.0f, 0.0f};
 
-int CurrentWidth = 1366, CurrentHeight = 705, WindowHandle = 0, FrameCount = 0;
+int CurrentWidth = 1366/3, CurrentHeight = 705/3, WindowHandle = 0, FrameCount = 0;
 
 GLuint Textures[NO_OF_TEXTURES];
 
@@ -173,7 +177,7 @@ void initGame();
 void checkInput();
 
 int main(int argc,char* argv[]){
-    srand(time(0));
+    srand(time(NULL));
 
     initialize(argc,argv);
 
@@ -227,14 +231,13 @@ void checkInput(){
     ForwardDirection=control_Interface::verticalCtrl();
     SideDirection=control_Interface::horizontalCtrl();
 
-    Player1.switchToPlayerBody();
     Player1.rotateAboutCamera(SideDirection,UNIT_TIME);
     if(ForwardDirection!=0){
-        Player1.forwardPosUpdate(ForwardDirection,UNIT_TIME);
+        Player1.forwardPosUpdate(ForwardDirection*UNIT_TIME);
         for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
-            if(Player1.simpleCuboidCollision(*Block)){
+            if(Player1.playerBodyCollision(*Block)){
                 Player1.reduceForwardOverlap(ForwardDirection,*Block,false);
-                break;
+                //break;
             }
         }
     }
@@ -679,51 +682,37 @@ void initGame(){
     translateMat(Floor.ModelMat,0,-0.25f,0);
     BlockStack.push_back(Floor);
 
-    Player1.setPlayerHeightWidth(PLAYER_HEIGHT,PLAYER_WIDTH);
     Player1.Texture=0;
     Player1.setShape(&Box);
 }
 
 void movePlayer(){
-    bool VelResetFlag=false;
-
     Player1.posUpdate(UNIT_TIME);
 
     for(const_Block_Iterator Block=BlockStack.begin();Block!=BlockStack.end();++Block){
-        Player1.switchToPlayer();
-        if(Player1.simpleCuboidCollision(*Block)){
-            float TimeRev;
-            if(Player1.velocityMaxComponent()>1e-10)
+        if(Player1.playerCollision(*Block)){
+            float TimeRev=0.0f;
+            if(Player1.velocityMaxComponent()>1e-10){
                 TimeRev=Player1.reduceOverlap(*Block,true);
-            Player1.switchToPlayerFeet();
-            if(Player1.simpleCuboidCollision(*Block)){
-                VelResetFlag=true;
-                break;
             }
-            Player1.switchToPlayerHead();
-            if(Player1.simpleCuboidCollision(*Block)){
-                VelResetFlag=true;
-                break;
+            if(Player1.playerFeetCollision(*Block) || Player1.playerHeadCollision(*Block)){
+                Player1.resetVelocity();
+                return;
             }
             Player1.posUpdate(TimeRev);
         }
     }
-    if(VelResetFlag)
-        Player1.resetVelocity();
-    else
-        Player1.velUpdate(Gravity,UNIT_TIME);
+    Player1.velUpdate(Gravity,UNIT_TIME);
 }
 
 void moveBlock(block_Iterator& FloatingBlock){
     FloatingBlock->velUpdate(Gravity,UNIT_TIME);
     FloatingBlock->posUpdate(UNIT_TIME);
 
-    Player1.switchToPlayer();
     if(FloatingBlock->simpleCuboidCollision((shape_Object)Player1)){
         float TimeRev=FloatingBlock->reduceOverlap((shape_Object)Player1,true);
-        Player1.switchToPlayerHead();
-        if(FloatingBlock->simpleCuboidCollision((shape_Object)Player1)){
-            Player1.reduceLives(FloorNo);
+        if(Player1.playerHeadCollision(*FloatingBlock)){
+            Player1.reduceLives();
         }
         FloatingBlock->posUpdate(TimeRev);
     }

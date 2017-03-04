@@ -1,4 +1,5 @@
 #include "defines.h"
+#include <iostream>
 #include <math.h>
 #include "mat_funcs.h"
 
@@ -30,18 +31,33 @@ void rotateXMatrix(float angle,float m[]){
     angle=angle*M_PI/180.0f;
     c=cos(angle);
     s=sin(angle);
+    if(c<1e-8&&c>-1e-8){
+        m[1]=-m[2]*s;
+        m[2]= m[1]*s;
 
-    m[1]=m[1]*c-m[2]*s;
-    m[2]=(m[2]+m[1]*s)/c;
+        m[5]=-m[6]*s;
+        m[6]= m[5]*s;
 
-    m[5]=m[5]*c-m[6]*s;
-    m[6]=(m[6]+m[5]*s)/c;
+        m[9]=-m[10]*s;
+        m[10]=m[9]*s;
 
-    m[9]=m[9]*c-m[10]*s;
-    m[10]=(m[10]+m[9]*s)/c;
+        m[13]=-m[14]*s;
+        m[14]= m[13]*s;
+    }
+    else{
+        m[1]=m[1]*c-m[2]*s;
+        m[2]=(m[2]+m[1]*s)/c;
 
-    m[13]=m[13]*c-m[14]*s;
-    m[14]=(m[14]+m[13]*s)/c;
+        m[5]=m[5]*c-m[6]*s;
+        m[6]=(m[6]+m[5]*s)/c;
+
+        m[9]=m[9]*c-m[10]*s;
+        m[10]=(m[10]+m[9]*s)/c;
+
+        m[13]=m[13]*c-m[14]*s;
+        m[14]=(m[14]+m[13]*s)/c;
+    }
+
 
     /*
     initMat(mat);
@@ -58,17 +74,32 @@ void rotateYMatrix(float angle,float m[]){
     c=cos(angle);
     s=sin(angle);
 
-    m[0]=m[0]*c+m[2]*s;
-    m[2]=(m[2]-m[0]*s)/c;
+    if(c<1e-8&&c>-1e-8){
+        m[0]= m[2]*s;
+        m[2]=-m[0]*s;
 
-    m[4]=m[4]*c+m[6]*s;
-    m[6]=(m[6]-m[4]*s)/c;
+        m[4]= m[6]*s;
+        m[6]=-m[4]*s;
 
-    m[8]=m[8]*c+m[10]*s;
-    m[10]=(m[10]-m[8]*s)/c;
+        m[8]= m[10]*s;
+        m[10]=-m[8]*s;
 
-    m[12]=m[12]*c+m[14]*s;
-    m[14]=(m[14]-m[12]*s)/c;
+        m[12]= m[14]*s;
+        m[14]=-m[12]*s;
+    }
+    else{
+        m[0]=m[0]*c+m[2]*s;
+        m[2]=(m[2]-m[0]*s)/c;
+
+        m[4]=m[4]*c+m[6]*s;
+        m[6]=(m[6]-m[4]*s)/c;
+
+        m[8]=m[8]*c+m[10]*s;
+        m[10]=(m[10]-m[8]*s)/c;
+
+        m[12]=m[12]*c+m[14]*s;
+        m[14]=(m[14]-m[12]*s)/c;
+    }
 
 /*
     initMat(mat);
@@ -84,18 +115,33 @@ void rotateZMatrix(float angle,float m[]){
     angle=angle*M_PI/180.0f;
     c=cos(angle);
     s=sin(angle);
+    if(c<1e-8&&c>-1e-8){
+        m[0]=-m[1]*s;
+        m[1]= m[0]*s;
 
-    m[0]=m[0]*c-m[1]*s;
-    m[1]=(m[1]+m[0]*s)/c;
+        m[4]=-m[5]*s;
+        m[5]= m[4]*s;
 
-    m[4]=m[4]*c-m[5]*s;
-    m[5]=(m[5]+m[4]*s)/c;
+        m[8]=-m[9]*s;
+        m[9]= m[8]*s;
 
-    m[8]=m[8]*c-m[9]*s;
-    m[9]=(m[9]+m[8]*s)/c;
+        m[12]=-m[13]*s;
+        m[13]= m[12]*s;
+    }
+    else{
+        m[0]=m[0]*c-m[1]*s;
+        m[1]=(m[1]+m[0]*s)/c;
 
-    m[12]=m[12]*c-m[13]*s;
-    m[13]=(m[13]+m[12]*s)/c;
+        m[4]=m[4]*c-m[5]*s;
+        m[5]=(m[5]+m[4]*s)/c;
+
+        m[8]=m[8]*c-m[9]*s;
+        m[9]=(m[9]+m[8]*s)/c;
+
+        m[12]=m[12]*c-m[13]*s;
+        m[13]=(m[13]+m[12]*s)/c;
+    }
+
 
 /*
     initMat(mat);
@@ -127,7 +173,8 @@ float normalizeVector(float v[]){
     mag = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
     if(mag>0.9999999 && mag<1.0000001)
         return mag;
-    if(mag<1e-20){
+    if(mag<1e-10){
+        std::cout<<"zero vector";
         v[0]=v[1]=v[2]=0;
         return 0;
     }
