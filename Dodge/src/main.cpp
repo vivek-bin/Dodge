@@ -28,7 +28,7 @@ float const Gravity[4]={0.0f, -9.0f, 0.0f, 0.0f};
 
 int CurrentWidth = 1366, CurrentHeight = 705, WindowHandle = 0, FrameCount = 0;
 
-GLuint Textures[NO_OF_TEXTURES];
+GLuint Textures[NO_OF_TEXTURES][2];
 
 base_Shape Box;
 
@@ -57,25 +57,30 @@ const GLchar* TexVertShader = { SHADERCODE(
  uniform mat4 M;
  uniform mat4 V;
  uniform mat4 P;
+ out mat3 fg_Normal_Transform;
  out vec2 fg_TexCoords;
- out vec3 fg_Normal;
  out vec4 fg_Position;
  void main(){
      fg_TexCoords.x=in_TexCoords.x*3*(M[0][0]+M[2][2]);
      fg_TexCoords.y=in_TexCoords.y*3*(M[1][1]+M[2][2]);
      fg_Position=M*in_Position;
      gl_Position=P*V*M*in_Position;
-     fg_Normal=vec3(normalize(M*vec4(in_Normal,0.0)));
+
+     fg_Normal_Transform = mat3( in_Normal.y*in_Normal.y+in_Normal.z,                           0.0f, in_Normal.x,
+                                                                0.0f, 1.0f - in_Normal.y*in_Normal.y, -in_Normal.y,
+                                                        -in_Normal.x,                   in_Normal.y, in_Normal.z);
  }
 )};
 
 const GLchar* TexFragShader = { SHADERCODE(
  in vec2 fg_TexCoords;
- in vec3 fg_Normal;
+ in mat3 fg_Normal_Transform;
  in vec4 fg_Position;
  uniform mat4 M;
  uniform mat4 V;
+ uniform vec3 Camera;
  uniform sampler2D basic_texture;
+ uniform sampler2D normal_texture;
  uniform vec4 transparent_colour=vec4(1.0f,1.0f,1.0f,1.0f);
  uniform float shadow_coords[5*MAX_FLOATING_BLOCKS];
  out vec4 frag_colour;
@@ -86,29 +91,37 @@ const GLchar* TexFragShader = { SHADERCODE(
      if(frag_colour == transparent_colour)
         discard;
 
-     vec4 light_position_world = vec4 (0.0, 25.0, 0.0, 1.0);
-     vec3 Ls = vec3 (0.0, 0.0, 0.0); // white specular colour // no specular lighting (all zeros)
-     vec3 Ld = vec3 (0.8, 0.8, 0.8); // dull white diffuse light colour
-     vec3 La = vec3 (0.4, 0.4, 0.4); // grey ambient colour
+     vec3 fg_Normal = normalize(fg_Normal_Transform * (texture(normal_texture,fg_TexCoords).xyz));
+
+     vec3 light_position_world = vec3 (0.0, 200.0, 0.0);
+     vec3 direction_to_light   = normalize(light_position_world - fg_Position.xyz);
+     vec3 Ls = vec3 (0.9, 0.9, 0.9); // white specular colour
+     vec3 Ld = vec3 (0.7, 0.6, 0.6); // dull white diffuse light colour
+     vec3 La = vec3 (0.7, 0.7, 0.7); // grey ambient colour
      // surface reflectance
-     vec3 Ks = vec3 (1.0, 1.0, 1.0); // fully reflect specular light
-     vec3 Kd = vec3 (1.0, 1.0, 1.0); // diffuse surface reflectance
-     vec3 Ka = vec3 (1.0, 1.0, 1.0); // fully reflect ambient light
-     float specular_exponent = 80.0; // specular 'power'
+     float Ks = 0.8;                 // fully reflect specular light
+     float Kd = 0.4;                 // diffuse surface reflectance
+     float Ka = 0.2;                 // fully reflect ambient light
+     float specular_exponent = 20.0;  // specular 'power'
+
      // ambient intensity
      vec3 Ia = La * Ka;
+
      // diffuse intensity
-     vec3 direction_to_light =vec3(normalize(light_position_world - fg_Position));
      vec3 Id = Ld * Kd * max(dot(direction_to_light, fg_Normal),0.0); // final diffuse intensity
 
      //specular light
-     vec3 reflection = reflect (direction_to_light, fg_Normal);
-     vec3 surface_to_viewer = normalize(vec3(V[0][3]-fg_Position.x,V[1][3]-fg_Position.y,V[2][3]-fg_Position.z));
+     vec3 reflection = reflect (direction_to_light,fg_Normal);
+     vec3 surface_to_viewer = normalize(- Camera + fg_Position.xyz);
      float dot_prod_specular = max (dot (reflection, surface_to_viewer), 0.0);
      float specular_factor = pow (dot_prod_specular, specular_exponent);
      vec3 Is = Ls * Ks * specular_factor; // final specular intensity
 
-     frag_colour = vec4(Is + Id + Ia, 1.0) * frag_colour;
+     frag_colour = vec4(
+                         Is
+                        +Id
+                        +Ia
+                        , 1.0) * frag_colour;
 
      float HL;
      float HW;
@@ -249,7 +262,7 @@ void checkInput(){
 }
 
 void idleFunction(){
-//    glutPostRedisplay();
+    glutPostRedisplay();
 }
 
 void renderFunction(){
@@ -279,24 +292,52 @@ void renderFunction(){
         ++i;
     }
 
-    TexShader.useProgram("P",ProjMat);
-    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"V")
-                       ,1,GL_FALSE,ViewMat);
+    TexShader.useProgram("P",ProjMat,"V",ViewMat);
 
     glUniform1fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"shadow_coords")
                  ,5*MAX_FLOATING_BLOCKS,ShadowData);
 
+    glUniform1i(glGetUniformLocation(shader_Prog::getCurrentProg(), "basic_texture"), 0);
+    glUniform1i(glGetUniformLocation(shader_Prog::getCurrentProg(), "normal_texture"), 1);
+
+    glUniform3fv(glGetUniformLocation(shader_Prog::getCurrentProg(), "Camera"), 1,Player1.Camera);
+
     MMUniformLocation=glGetUniformLocation(shader_Prog::getCurrentProg(),"M");
-    for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
-        glBindTexture(GL_TEXTURE_2D,Block->Texture);
-        glUniformMatrix4fv(MMUniformLocation,1,GL_FALSE,Block->ModelMat);
-        (Block->Shape)->drawElements(GL_TRIANGLES);
+    for(i=0;i<NO_OF_TEXTURES;++i){
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, Textures[i][0]);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, Textures[i][1]);
+        for(const_Reverse_Block_Iterator Block=BlockStack.rbegin();Block!=BlockStack.rend();++Block){
+            if(Block->Texture==Textures[i][0]){
+                glUniformMatrix4fv(MMUniformLocation,1,GL_FALSE,Block->ModelMat);
+                (Block->Shape)->drawElements(GL_TRIANGLES);
+            }
+        }
     }
 
-    SimpleTexShader.useProgram("P",ProjMat);
-    glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"V"),
-                       1,GL_FALSE,ViewMat);
+    //floor
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, BlockStack[4].Texture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, BlockStack[4].NormalTexture);
+    glUniformMatrix4fv(MMUniformLocation,1,GL_FALSE,BlockStack[4].ModelMat);
+    (BlockStack[4].Shape)->drawElements(GL_TRIANGLES);
 
+    //walls
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, BlockStack[0].Texture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, BlockStack[0].NormalTexture);
+    for(i=0;i<4;++i){
+        glUniformMatrix4fv(MMUniformLocation,1,GL_FALSE,BlockStack[i].ModelMat);
+        (BlockStack[i].Shape)->drawElements(GL_TRIANGLES);
+    }
+
+    SimpleTexShader.useProgram("P",ProjMat,"V",ViewMat);
+
+    glUniform1i(glGetUniformLocation(shader_Prog::getCurrentProg(), "basic_texture"), 0);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D,SceneryCube.Texture);
     glUniformMatrix4fv(glGetUniformLocation(shader_Prog::getCurrentProg(),"M"),
                        1,GL_FALSE,SceneryCube.ModelMat);
@@ -338,7 +379,6 @@ void timerFunction(int n){
     }
     glutTimerFunc(UNIT_TIME*1000,timerFunction,1);
     FrameCount=0;
-    glutPostRedisplay();
 }
 
 void createProjMat(float ProjMat[],float Near,float Far,float Fov,float Aspect){
@@ -367,7 +407,6 @@ GLuint loadTexture(const char * path,const GLuint Params,const GLuint Paramt,con
         fprintf(stdout,"error loading image");
     }
     glGenTextures (1, &tex);
-    glActiveTexture (GL_TEXTURE0);
     glBindTexture (GL_TEXTURE_2D, tex);
     glTexImage2D (GL_TEXTURE_2D,0,GL_RGBA,x,y,0,GL_RGBA,GL_UNSIGNED_BYTE,image);
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, Params);
@@ -605,7 +644,9 @@ void nextBlock(){
     //create the block
     shape_Object Next;
     Next.Shape=&Box;
-    Next.Texture=Textures[(rand()%NO_OF_TEXTURES)];
+    int i=(rand()%NO_OF_TEXTURES);
+    Next.Texture=Textures[i][0];
+    Next.NormalTexture=Textures[i][1];
     scaleMat(Next.ModelMat,UNIT_DISTANCE*0.5f*(xn+xp-1)*0.999f,
                            UNIT_DISTANCE*0.5f*Height,
                            UNIT_DISTANCE*0.5f*(yn+yp-1)*0.999f);
@@ -636,12 +677,23 @@ void initGame(){
     SimpleTexShader.createShaders(SimpleTexVertShader,SimpleTexFragShader);
 
     createBox();
-    Textures[0]=loadTexture("./images/block0.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Textures[1]=loadTexture("./images/block1.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Textures[2]=loadTexture("./images/block2.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Textures[3]=loadTexture("./images/block3.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Textures[4]=loadTexture("./images/block4.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
-    Textures[5]=loadTexture("./images/block5.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[0][0]=loadTexture("./images/block0.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[0][1]=loadTexture("./images/block0_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+
+    Textures[1][0]=loadTexture("./images/block1.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[1][1]=loadTexture("./images/block1_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+
+    Textures[2][0]=loadTexture("./images/block2.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[2][1]=loadTexture("./images/block2_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+
+    Textures[3][0]=loadTexture("./images/block3.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[3][1]=loadTexture("./images/block3_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+
+    Textures[4][0]=loadTexture("./images/block4.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[4][1]=loadTexture("./images/block4_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+
+    Textures[5][0]=loadTexture("./images/block5.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Textures[5][1]=loadTexture("./images/block5_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
 
     SceneryCube.Shape=&Box;
     scaleMat(SceneryCube.ModelMat,SCENE_CUBE_SIZE,SCENE_CUBE_SIZE*0.5f,SCENE_CUBE_SIZE);
@@ -654,6 +706,7 @@ void initGame(){
     shape_Object Wall;
 
     Wall.Texture=loadTexture("./images/walls.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Wall.NormalTexture=loadTexture("./images/walls_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
     Wall.Shape=&Box;
     Wall.resetVelocity();
     initMat(Wall.ModelMat);
@@ -679,6 +732,7 @@ void initGame(){
     shape_Object Floor;
     Floor.Shape=&Box;
     Floor.Texture=loadTexture("./images/floor.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
+    Floor.NormalTexture=loadTexture("./images/floor_n.bmp",GL_REPEAT,GL_REPEAT,GL_LINEAR);
     Floor.resetVelocity();
     scaleMat(Floor.ModelMat,FLOOR_SIZE*UNIT_DISTANCE*0.5,0.5f,FLOOR_SIZE*UNIT_DISTANCE*0.5);
     translateMat(Floor.ModelMat,0,-0.25f,0);

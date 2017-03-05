@@ -5,13 +5,14 @@
 
 class player_Class:public shape_Object{
 private:
-    float *Camera;
     float Height,Width;
     float Forward[4],Up[4];
     float MouseXAngle,MouseYAngle;
     short Lives;
 
 public:
+
+    float *Camera;
 
     player_Class();
 

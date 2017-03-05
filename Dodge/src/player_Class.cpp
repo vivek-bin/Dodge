@@ -10,8 +10,8 @@
 #include "player_Class.h"
 
 
-player_Class::player_Class(): shape_Object(),Camera(&ModelMat[12]),Height(PLAYER_HEIGHT),
-                              Width(PLAYER_WIDTH),MouseXAngle(),MouseYAngle(),Lives(100){
+player_Class::player_Class(): shape_Object(),Height(PLAYER_HEIGHT),Width(PLAYER_WIDTH),
+                              MouseXAngle(),MouseYAngle(),Lives(100),Camera(&ModelMat[12]){
 
     scaleMat(ModelMat,Width,Height,Width);
     translateMat(ModelMat,0,Height + 5.0f,0);

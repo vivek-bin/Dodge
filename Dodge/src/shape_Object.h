@@ -10,6 +10,7 @@ protected:
 public:
     base_Shape *Shape;
     GLuint Texture;
+    GLuint NormalTexture;
     float ModelMat[16];
 
     shape_Object();

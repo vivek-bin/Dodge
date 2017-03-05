@@ -9,11 +9,11 @@
 #include "shape_Object.h"
 
 
-shape_Object::shape_Object():ObjVelocity(),Floating(true),Shape(),Texture(){
+shape_Object::shape_Object():ObjVelocity(),Floating(true),Shape(),Texture(),NormalTexture(){
     initMat(ModelMat);
 }
 
-shape_Object::shape_Object(const shape_Object& Obj):Floating(Obj.Floating),Shape(Obj.Shape),Texture(Obj.Texture){
+shape_Object::shape_Object(const shape_Object& Obj):Floating(Obj.Floating),Shape(Obj.Shape),Texture(Obj.Texture),NormalTexture(Obj.NormalTexture){
     for(int i=0;i<4;i++)
         ObjVelocity[i]=Obj.ObjVelocity[i];
 
