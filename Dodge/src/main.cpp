@@ -61,8 +61,12 @@ const GLchar* TexVertShader = { SHADERCODE(
  out vec2 fg_TexCoords;
  out vec4 fg_Position;
  void main(){
-     fg_TexCoords.x=in_TexCoords.x*3*(M[0][0]+M[2][2]);
-     fg_TexCoords.y=in_TexCoords.y*3*(M[1][1]+M[2][2]);
+
+     fg_TexCoords.x=2*(min(in_TexCoords.x,0.25)*M[2][2] + clamp(in_TexCoords.x-0.25,0.0,0.25)*M[0][0]
+                    + clamp(in_TexCoords.x-0.5,0.0,0.25)*M[2][2] + max(in_TexCoords.x-0.75,0.0)*M[0][0]);
+
+     fg_TexCoords.y=2*(min(in_TexCoords.y,0.5)*M[2][2] + max(in_TexCoords.y-0.5,0)*M[1][1]);
+
      fg_Position=M*in_Position;
      gl_Position=P*V*M*in_Position;
 
@@ -144,6 +148,23 @@ const GLchar* TexFragShader = { SHADERCODE(
         if(MinHD>18)MinHD=18;
         frag_colour = (MinHD*0.05+0.1) * frag_colour;
      }
+ }
+)};
+
+const GLchar* DepthVertShader = { SHADERCODE(
+ layout(location=0) in vec4 in_Position;
+ uniform mat4 M;
+ uniform mat4 P_VLight;
+ out vec2 fg_TexCoords;
+ void main(){
+     gl_Position=P_VLight*M*in_Position;
+ }
+)};
+
+const GLchar* DepthFragShader = { SHADERCODE(
+ layout(location=0) out float depth;
+ void main(){
+     depth = fg_Position.z;
  }
 )};
 
@@ -543,7 +564,7 @@ void createBox(){
     glBindVertexArray(0);
 }
 
-void nextBlock(){
+void nextBlock(){if(BlockStack.size()>10)return;
     int BlockPos,BlocksLeft;
     int x,y,xn,xp,yn,yp;
 
