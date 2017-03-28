@@ -564,7 +564,7 @@ void createBox(){
     glBindVertexArray(0);
 }
 
-void nextBlock(){if(BlockStack.size()>10)return;
+void nextBlock(){
     int BlockPos,BlocksLeft;
     int x,y,xn,xp,yn,yp;
 
