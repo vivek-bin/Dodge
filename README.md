@@ -1,3 +1,5 @@
+![Trapped](screenshots/s2.jpg?raw=true "Trapped")
+
 # Dodge
 
 This is a basic survival game, where the player has to dodge blocks faling from above and reach as high as possible.
@@ -27,3 +29,12 @@ The program requires 'freeglut.dll' to run.
  - CodeBlocks IDE with MinGW C++ compiler
  - OpenGL version 4.0
 
+![](screenshots/s1.jpg?raw=true)
+
+![](screenshots/s2.jpg?raw=true)
+
+![](screenshots/s3.jpg?raw=true)
+
+![](screenshots/s4.jpg?raw=true)
+
+![](screenshots/s5.jpg?raw=true)
